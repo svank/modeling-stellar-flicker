@@ -7,3 +7,5 @@ report
 *.png
 *.npy
 *.swp
+.idea
+.ipynb_checkpoints
