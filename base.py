@@ -4,14 +4,19 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import scipy.optimize
+import astropy.constants as consts
 from progressBar import ProgressBar
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
 
 M_sun = 1 # Solar masses
+M_sun_grams = 1.998e33
 T_sun = 5777 # K
 logg_sun = 4.438 # log-cgs units, I suppose
 ν_sun = 3.106e-3 # Hz
+Ma_sun = 0.26 # As given in Cranmer 2014
+Z_sun = 0.016
+R_sun_cm = 6.957e10
 
 
 def merge_catalog():
@@ -232,7 +237,6 @@ def calc_F8_from_σ(logg, Teff, σ, S=1):
     ν_8 = 1 / (8 * 3600)
     ν_max = calc_ν_max(logg, Teff)
     Ma = calc_Ma(logg, Teff) * S
-    Ma_sun = 0.26 # As given in Cranmer 2014
     
     τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
     
@@ -308,6 +312,158 @@ def plot_outline(newer_version=True):
     plt.plot([.34, .34], [poly_fit(.34)+.2, poly_fit(.34)-.2], color='black')
     
     plt.gca().invert_yaxis()
+    
+def plot_ZAMS_Teff_logg(**kwargs):
+    M, R, L, T, T_core, rho_core = np.genfromtxt(
+            "orig_data/zams_star_properties.dat.txt",
+            skip_header=10, unpack=True)
+    from astropy.constants import G
+    M *= M_sun_grams
+    R *= R_sun_cm
+    
+    g = G.cgs.value * M / R**2
+    
+    plt.plot(T, np.log10(g), **kwargs)
+
+
+
+# ---- New Versions ----
+
+
+
+def calc_phi_new(Ma):
+    A = 1.62191904e+00
+    B = 1.59965328e+01
+    e2 = -1.03057868e-02
+    return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) ** (1)
+
+def old_calc_phi_new(Ma):
+    a = 0.15390654
+    b = 0.08877965
+    M0 = 0.32299999
+    
+    phi0 = a*M0**2 + b*M0
+    return (a*Ma**2 + b*Ma) * (Ma < M0) + phi0 * (Ma >= M0)
+
+def calc_F8_new(logg, Teff, M, Z):
+    σ = calc_σ_new(Teff, M, logg, Z)
+    return calc_F8_from_σ_new(logg, Teff, Z, σ)
+
+def calc_σ_new(Teff, M, logg, Z):
+    """Calculates RMS amplitude σ of photospheric continuum intensity variations
+    Cranmer 2014's Eqn 1
+    """
+    ν_max = calc_ν_max(logg, Teff)
+    Ma = calc_Ma_new(logg, Teff, Z)
+    Φ = calc_phi_new(Ma)
+    Φ_sun = calc_phi_new(Ma_sun)
+    
+    # Steve had a power of 1.03, drawing from Samadi's appendix. But that
+    # exponent doesn't actually apply to this equation, so return to Samadi's
+    # 1.10
+    return 0.039 * ( (Teff / T_sun) ** (3/4)
+                     * (M_sun * ν_sun / M / ν_max) ** (1/2)
+                     * (Φ / Φ_sun) ** 2)**1.10
+
+def calc_F8_from_σ_new(logg, Teff, Z, σ):
+    """Cranmer 2014's Eqn 8"""
+    ν_8 = 1 / (8 * 3600)
+    ν_max = calc_ν_max(logg, Teff)
+    Ma = calc_Ma_new(logg, Teff, Z)
+    
+    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
+    
+    return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
+
+def calc_Ma_new(logg, Teff, Z):
+    rho_sun = find_rho(T_sun, Z_sun, logg_sun) 
+    
+    rho = find_rho(Teff, Z, logg)
+    return Ma_sun * (Teff / T_sun) ** (5/6) * (rho / rho_sun) ** (-1/3)
+
+aesopus_data = None
+
+def load_aesopus():
+    global aesopus_R_vals, aesopus_data
+    global aesopus_T_idx_mapper, aesopus_Z_idx_mapper
+    from pathlib import Path
+    
+    files = list(Path("orig_data/aesopus/").glob("Z*"))
+    aesopus_data = np.zeros((len(files), 67, 91))
+    aesopus_Z_vals = np.zeros(len(files))
+    aesopus_R_vals = 10**np.arange(-8, 1.01, .1)
+    for i, f in enumerate(sorted(files)):
+        aesopus_Z_vals[i] = str(f).split("Z")[1]
+        # print(f, aesopus_Z_vals[i])
+        d = np.genfromtxt(f, skip_header=329)
+        aesopus_T_vals = 10**d[:, 0]
+        aesopus_data[i] = d[:, 1:] 
+    
+    import scipy.interpolate
+    aesopus_T_idx_mapper = scipy.interpolate.interp1d(aesopus_T_vals, np.arange(aesopus_T_vals.size), kind='linear')
+    aesopus_Z_idx_mapper = scipy.interpolate.interp1d(aesopus_Z_vals, np.arange(aesopus_Z_vals.size), kind='linear') 
+
+load_aesopus()
+
+def _find_rho(T_val, Z_val, logg_val):
+    k_B = consts.k_B.cgs.value
+    m_h = consts.m_p.cgs.value
+    
+    T_idx = aesopus_T_idx_mapper(T_val)
+    t1, t2 = int(np.floor(T_idx)), int(np.ceil(T_idx))
+    t1r = 1 - (T_idx - t1)
+    t2r = 1 - t1r
+
+    Z_idx = aesopus_Z_idx_mapper(Z_val)
+    z1, z2 = int(np.floor(Z_idx)), int(np.ceil(Z_idx))
+    z1r = 1 - (Z_idx - z1)
+    z2r = 1 - z1r
+
+    κ = (  10**aesopus_data[z1, t1] * z1r * t1r
+         + 10**aesopus_data[z1, t2] * z1r * t2r
+         + 10**aesopus_data[z2, t1] * z2r * t1r
+         + 10**aesopus_data[z2, t2] * z2r * t2r )
+
+    ρ = aesopus_R_vals * (1e-6 * T_val)**3
+
+    μ = 7/4 + .5 * np.tanh( (3500-T_val) / 600)
+    H = k_B * T_val / μ / m_h / 10**logg_val
+
+    τ = κ * ρ * H
+
+    ρ_idx = scipy.interpolate.interp1d(τ, np.arange(τ.size), kind='linear', fill_value="extrapolate")(2/3)
+    ρ_val = scipy.interpolate.interp1d(τ, ρ, kind='linear', fill_value="extrapolate")(2/3)
+
+    κ_idx = scipy.interpolate.interp1d(τ, np.arange(κ.size), kind='linear', fill_value="extrapolate")(2/3)
+    κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
+    
+    # This version doesn't extrapolate
+#     ρ_idx = np.interp(2/3, τ, np.arange(τ.size))
+#     ρ_val = np.interp(2/3, τ, ρ)
+
+#     κ_idx = np.interp(2/3, τ, np.arange(κ.size))
+#     κ_val = np.interp(2/3, τ, κ)
+    
+    return ρ_val
+
+find_rho = np.vectorize(_find_rho)
+
+def FeH_to_Z(FeH):
+    # TODO: Maybe still try to find what constant is baked into LAMOST's Fe/H
+    # values. Steve had found that the solar Fe/H hasn't changed much over time,
+    # so there's hope that what they used is what everyone else uses and we
+    # don't need to find theirs specifically.
+    return 0.01696 * 10**FeH
+
+def calc_convective_turnover_time(Teff):
+    return 0.002 + 314.24 * np.exp(-(Teff/1952.5) - (Teff/6250)**18)
+
+
+
+# -----------------
+
+
+
 
 
 #merge_catalog()
