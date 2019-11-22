@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import scipy.optimize
+from progressBar import ProgressBar
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
 
@@ -28,7 +29,23 @@ def merge_catalog():
         row = cranmer_raw[i]
         cranmer[int(row[0])] = row
     
+    mcquillan_raw = np.genfromtxt("orig_data/McQuillan_2014.txt", skip_header=32)
+    
+    mcquillan = dict()
+    for i in range(mcquillan_raw.shape[0]):
+        row = mcquillan_raw[i]
+        mcquillan[int(row[0])] = row
+        
+        
     bastien_raw = np.loadtxt("Bastien_2016.txt", skiprows=27, unpack=True)
+    
+    lamost_raw = np.genfromtxt("orig_data/lamost_dr5_vac.out", skip_header=39,
+            delimiter=(10, 12, 17, 15, 15, 10, 16, 8, 21, 19, 11, 3, 6, 20, 23, 12, 5)) 
+    lamost = dict()
+    for i in range(lamost_raw.shape[0]):
+        row = lamost_raw[i]
+        if not np.isnan(row[1]) and not np.isnan(row[10]) and not np.isnan(row[12]):
+            lamost[int(row[1])] = row
     
     (KIC, kepmag, F8logg, E_F8logg, e_F8logg, Range, RMS, Teff) = bastien_raw
     
@@ -59,7 +76,15 @@ def merge_catalog():
                    ('sigmaC', 'float64'),
                    ('F8_modC', 'float64'),
                    ('F8_obsC', 'float64'),
-                   ('has_C', 'int8'),
+                   ('has_C', 'bool_'),
+                   ('FeH', 'float64'),
+                   ('e_FeH', 'float64'),
+                   ('has_L', 'bool_'),
+                   ('PRot', 'float64'),
+                   ('e_PRot', 'float64'),
+                   ('RPer', 'float64'),
+                   ('PFlag', 'str_'),
+                   ('has_M', 'bool_'),
                    ('myF8', 'float64')])
     catalog['KIC'] = KIC
     catalog['kepmag'] = kepmag
@@ -70,6 +95,7 @@ def merge_catalog():
     catalog['RMS'] = RMS
     catalog['Teff'] = Teff
     
+    pb = ProgressBar(len(KIC))
     for i, kic in enumerate(KIC):
         h_data = huber[kic]
         catalog['TeffH'][i]   = h_data[1]
@@ -93,6 +119,23 @@ def merge_catalog():
             catalog['sigmaC'][i] = c_data[7]
             catalog['F8_modC'][i] = c_data[8]
             catalog['F8_obsC'][i] = c_data[9]
+        
+        if kic in lamost:
+            catalog['has_L'][i] = 1
+            l_data = lamost[kic]
+            catalog['FeH'][i] = float(l_data[10])
+            catalog['e_FeH'][i] = float(l_data[12])
+        
+        if kic in mcquillan:
+            catalog['has_M'][i] = 1
+            m_data = mcquillan[kic]
+            catalog['PRot'][i] = float(m_data[4])
+            catalog['e_PRot'][i] = float(m_data[5])
+            catalog['RPer'][i] = float(m_data[6])
+            catalog['PFlag'][i] = m_data[10]
+        pb.increment()
+        pb.display()
+    pb.display(True)
     np.save('merged_catalog.npy', catalog)
 
 
