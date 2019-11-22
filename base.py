@@ -177,11 +177,11 @@ def calc_σ(Teff, M, logg, S=1, Φ=None):
     Cranmer 2014's Eqn 1
     """
     ν_max = calc_ν_max(logg, Teff)
-    Ma = calc_Ma(logg, Teff)
-    Ma *= S
     if Φ is None:
-        # TODO: Why is the phi(.26) here? It's not in the paper
-        Φ = calc_Φ(Ma) / calc_Φ(.26)
+        Ma = calc_Ma(logg, Teff)
+        Ma *= S
+        
+        Φ = calc_Φ(Ma)
         
         # Clamp Φ at zero
         Φ = 0 * (Φ < 0) + Φ * (Φ >= 0)
@@ -206,13 +206,14 @@ def calc_Ma(logg, Teff):
     return 0.26 * (Teff / T_sun)**2.35 * (10**logg_sun / 10**logg) ** 0.152
 
 
+def calc_phi(*args, **kwargs):
+    return calc_Φ(*args, **kwargs)
+
+
 def calc_Φ(Ma, make_monotonic=True):
     """Calculates the temperature fluctuation amplitude
     Cranmer 2014's Eqn 4
     """
-    
-    # TODO: Check in on these---numbers might be reported wrong in Steve's paper,
-    # but calculations behind his plots should be fine
     A = -.59/.26/.26 # = -8.73
     B = 2.3/.26      # =  8.85
     C = -0.67        # = -0.67
@@ -285,7 +286,7 @@ def fit_Φ(logg_arr, Teff_arr, M_arr, F8obs_arr):
         obj = lambda Φ: calc_F8(logg, Teff, M, Φ=Φ) - F8obs
         
         try:
-            Φ[i] = scipy.optimize.newton(obj, x0=3)
+            Φ[i] = scipy.optimize.newton(obj, x0=1)
         except:
             Φ[i] = float('nan')
     
@@ -314,25 +315,3 @@ def plot_outline(newer_version=True):
 catalog = load_catalog()
 
 catalog['F8'] = F8_from_logg(catalog['F8logg'])
-
-#F8 = F8_from_logg(F8logg)
-
-#σ = calc_σ(Teff, M, loggH)
-#F8M = calc_F8_from_σ(loggH, Teff, σ)
-
-#plt.subplot(211)
-#plt.hexbin(F8, loggH, cmap='hot')
-#plt.title("Observed")
-#plt.colorbar()
-#plt.gca().invert_yaxis()
-#plt.xlim(0, .5)
-
-#plt.subplot(212)
-#plt.hexbin(F8M, loggH, cmap='hot')
-#plt.title("Modeled")
-#plt.colorbar()
-#plt.gca().invert_yaxis()
-#plt.xlim(0, .5)
-
-#plt.tight_layout()
-#plt.show()
