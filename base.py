@@ -387,6 +387,16 @@ def calc_F8_from_σ_new(logg, Teff, Z, σ):
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
+def calc_σ_from_F8_new(logg, Teff, Z, F8):
+    """Cranmer 2014's Eqn 8"""
+    ν_8 = 1 / (8 * 3600)
+    ν_max = calc_ν_max(logg, Teff)
+    Ma = calc_Ma_new(logg, Teff, Z)
+    
+    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
+    
+    return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
+
 def calc_Ma_new(logg, Teff, Z):
     rho_sun = find_rho(T_sun, Z_sun, logg_sun) 
     
