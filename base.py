@@ -336,6 +336,13 @@ def calc_N_gran(R, Teff, logg):
 
 
 
+def calc_Φ_from_F8_new(F8, logg, Teff, M, Z):
+    σ = calc_σ_from_F8_new(logg, Teff, Z, F8)
+    ν_max = calc_ν_max(logg, Teff)
+    factor = (Teff / T_sun) ** (3/4) * (M_sun * ν_sun / M / ν_max) ** (1/2)
+    return ( (σ / 0.039)**(1/1.10) / factor ) ** 0.5
+calc_phi_from_F8_new = calc_Φ_from_F8_new
+
 def calc_phi_new(Ma):
     A = 1.62191904e+00
     B = 1.59965328e+01
