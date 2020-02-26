@@ -327,6 +327,9 @@ def plot_ZAMS_Teff_logg(**kwargs):
     
     plt.plot(T, np.log10(g), **kwargs)
 
+def calc_N_gran(R, Teff, logg):
+    Lambda = (Teff / T_sun) / (10**logg / 10**logg_sun) * 1e8 # gran size, cm
+    return 2 * np.pi * R**2 / Lambda**2
 
 
 # ---- New Versions ----
