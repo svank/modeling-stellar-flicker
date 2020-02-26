@@ -352,6 +352,30 @@ def calc_theta_new(Ma):
     e2 = -1.03057868e-02
     return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) ** (1)
 
+def calc_theta_min(Ma):
+    A = 4.73096075
+    B = 15.95174181
+    e1 = -2.
+    e2 = 0.45593737
+    return 1 / (A * Ma ** (-2) + B * Ma ** (e2))
+   
+def calc_theta_max(Ma):
+    A = 1.25633511
+    B = 14.6845559
+    e1 = -2.
+    e2 = 0.20478565
+    return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) 
+
+def calc_theta_ratio_to_envelope(theta_emp, Ma):
+    bound_lower = calc_theta_min(Ma)
+    bound_upper = calc_theta_max(Ma)
+    ratio_lower = theta_emp / bound_lower
+    ratio_upper = theta_emp / bound_upper
+    out = np.ones_like(ratio_lower)
+    out[theta_emp < bound_lower] = ratio_lower[theta_emp < bound_lower]
+    out[theta_emp > bound_upper] = ratio_upper[theta_emp > bound_upper]
+    return out
+
 def _calc_Ma_from_phi(phi):
     f = lambda Ma: np.abs(calc_phi_new(Ma) - phi)
     return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 2000)).x
@@ -366,18 +390,39 @@ def old_calc_phi_new(Ma):
     phi0 = a*M0**2 + b*M0
     return (a*Ma**2 + b*Ma) * (Ma < M0) + phi0 * (Ma >= M0)
 
-def calc_F8_new(logg, Teff, M, Z):
-    σ = calc_σ_new(Teff, M, logg, Z)
+def calc_F8_new(logg, Teff, M, Z, phi=None):
+    σ = calc_σ_new(Teff, M, logg, Z, Φ=phi)
     return calc_F8_from_σ_new(logg, Teff, Z, σ)
 
-def calc_σ_new(Teff, M, logg, Z):
+def calc_F8_max(logg, Teff, M, Z):
+    Ma = calc_Ma_new(logg, Teff, Z)
+    phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
+    return calc_F8_new(logg, Teff, M, Z, phi)
+
+def calc_F8_min(logg, Teff, M, Z):
+    Ma = calc_Ma_new(logg, Teff, Z)
+    phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
+    return calc_F8_new(logg, Teff, M, Z, phi)
+
+def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1):
+    bound_lower = calc_F8_min(logg, Teff, M, Z) * sig_mult
+    bound_upper = calc_F8_max(logg, Teff, M, Z) * sig_mult
+    ratio_lower = F8_emp / bound_lower
+    ratio_upper = F8_emp / bound_upper
+    out = np.ones_like(ratio_lower)
+    out[F8_emp < bound_lower] = ratio_lower[F8_emp < bound_lower]
+    out[F8_emp > bound_upper] = ratio_upper[F8_emp > bound_upper]
+    return out
+
+
+def calc_σ_new(Teff, M, logg, Z, Φ=None):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
     Cranmer 2014's Eqn 1
     """
     ν_max = calc_ν_max(logg, Teff)
-    Ma = calc_Ma_new(logg, Teff, Z)
-    Φ = calc_phi_new(Ma)
-    Φ_sun = calc_phi_new(Ma_sun)
+    if Φ is None:
+        Ma = calc_Ma_new(logg, Teff, Z)
+        Φ = calc_phi_new(Ma)
     
     # Steve had a power of 1.03, drawing from Samadi's appendix. But that
     # exponent doesn't actually apply to this equation, so return to Samadi's
