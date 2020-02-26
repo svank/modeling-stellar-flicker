@@ -81,6 +81,7 @@ def merge_catalog():
                    ('sigmaC', 'float64'),
                    ('F8_modC', 'float64'),
                    ('F8_obsC', 'float64'),
+                   ('RvarC', 'float64'),
                    ('has_C', 'bool_'),
                    ('FeH', 'float64'),
                    ('e_FeH', 'float64'),
@@ -124,6 +125,7 @@ def merge_catalog():
             catalog['sigmaC'][i] = c_data[7]
             catalog['F8_modC'][i] = c_data[8]
             catalog['F8_obsC'][i] = c_data[9]
+            catalog['RvarC'][i] = c_data[10]
         
         if kic in lamost:
             catalog['has_L'][i] = 1
