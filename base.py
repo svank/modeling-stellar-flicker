@@ -349,6 +349,12 @@ def calc_phi_new(Ma):
     e2 = -1.03057868e-02
     return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) ** (1)
 
+def _calc_Ma_from_phi(phi):
+    f = lambda Ma: np.abs(calc_phi_new(Ma) - phi)
+    return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 2000)).x
+
+calc_Ma_from_phi = np.vectorize(_calc_Ma_from_phi)
+
 def old_calc_phi_new(Ma):
     a = 0.15390654
     b = 0.08877965
