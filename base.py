@@ -344,6 +344,9 @@ def calc_Φ_from_F8_new(F8, logg, Teff, M, Z):
 calc_phi_from_F8_new = calc_Φ_from_F8_new
 
 def calc_phi_new(Ma):
+    return calc_theta_new(Ma) / calc_theta_new(Ma_sun)
+
+def calc_theta_new(Ma):
     A = 1.62191904e+00
     B = 1.59965328e+01
     e2 = -1.03057868e-02
@@ -381,7 +384,7 @@ def calc_σ_new(Teff, M, logg, Z):
     # 1.10
     return 0.039 * ( (Teff / T_sun) ** (3/4)
                      * (M_sun * ν_sun / M / ν_max) ** (1/2)
-                     * (Φ / Φ_sun) ** 2)**1.10
+                     * Φ ** 2)**1.10
 
 def calc_F8_from_σ_new(logg, Teff, Z, σ):
     """Cranmer 2014's Eqn 8"""
