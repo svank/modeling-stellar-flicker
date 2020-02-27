@@ -5,6 +5,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import scipy.optimize
 import astropy.constants as consts
+import functools
+from numba import jit
 from progressBar import ProgressBar
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
@@ -17,6 +19,8 @@ logg_sun = 4.438 # log-cgs units, I suppose
 Ma_sun = 0.26 # As given in Cranmer 2014
 Z_sun = 0.016
 R_sun_cm = 6.957e10
+k_B = consts.k_B.cgs.value
+m_h = consts.m_p.cgs.value
 
 
 def merge_catalog():
@@ -390,23 +394,26 @@ def old_calc_phi_new(Ma):
     phi0 = a*M0**2 + b*M0
     return (a*Ma**2 + b*Ma) * (Ma < M0) + phi0 * (Ma >= M0)
 
-def calc_F8_new(logg, Teff, M, Z, phi=None):
+def calc_F8_new(logg, Teff, M, Z, phi=None, Ma=None):
     σ = calc_σ_new(Teff, M, logg, Z, Φ=phi)
-    return calc_F8_from_σ_new(logg, Teff, Z, σ)
+    return calc_F8_from_σ_new(logg, Teff, Z, σ, Ma)
 
-def calc_F8_max(logg, Teff, M, Z):
-    Ma = calc_Ma_new(logg, Teff, Z)
+def calc_F8_max(logg, Teff, M, Z, Ma=None):
+    if Ma is None:
+        Ma = calc_Ma_new(logg, Teff, Z)
     phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
-    return calc_F8_new(logg, Teff, M, Z, phi)
+    return calc_F8_new(logg, Teff, M, Z, phi, Ma)
 
-def calc_F8_min(logg, Teff, M, Z):
-    Ma = calc_Ma_new(logg, Teff, Z)
+def calc_F8_min(logg, Teff, M, Z, Ma=None):
+    if Ma is None:
+        Ma = calc_Ma_new(logg, Teff, Z)
     phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
-    return calc_F8_new(logg, Teff, M, Z, phi)
+    return calc_F8_new(logg, Teff, M, Z, phi, Ma)
 
 def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1):
-    bound_lower = calc_F8_min(logg, Teff, M, Z) * sig_mult
-    bound_upper = calc_F8_max(logg, Teff, M, Z) * sig_mult
+    Ma = calc_Ma_new(logg, Teff, Z)
+    bound_lower = calc_F8_min(logg, Teff, M, Z, Ma) * sig_mult
+    bound_upper = calc_F8_max(logg, Teff, M, Z, Ma) * sig_mult
     ratio_lower = F8_emp / bound_lower
     ratio_upper = F8_emp / bound_upper
     out = np.ones_like(ratio_lower)
@@ -431,11 +438,12 @@ def calc_σ_new(Teff, M, logg, Z, Φ=None):
                      * (M_sun * ν_sun / M / ν_max) ** (1/2)
                      * Φ ** 2)**1.10
 
-def calc_F8_from_σ_new(logg, Teff, Z, σ):
+def calc_F8_from_σ_new(logg, Teff, Z, σ, Ma=None):
     """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
     ν_max = calc_ν_max(logg, Teff)
-    Ma = calc_Ma_new(logg, Teff, Z)
+    if Ma is None:
+        Ma = calc_Ma_new(logg, Teff, Z)
     
     τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
     
@@ -452,8 +460,6 @@ def calc_σ_from_F8_new(logg, Teff, Z, F8):
     return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
 def calc_Ma_new(logg, Teff, Z):
-    rho_sun = find_rho(T_sun, Z_sun, logg_sun) 
-    
     rho = find_rho(Teff, Z, logg)
     return Ma_sun * (Teff / T_sun) ** (5/6) * (rho / rho_sun) ** (-1/3)
 
@@ -478,13 +484,24 @@ def load_aesopus():
     import scipy.interpolate
     aesopus_T_idx_mapper = scipy.interpolate.interp1d(aesopus_T_vals, np.arange(aesopus_T_vals.size), kind='linear')
     aesopus_Z_idx_mapper = scipy.interpolate.interp1d(aesopus_Z_vals, np.arange(aesopus_Z_vals.size), kind='linear') 
+    
+    # There are many duplicate T and Z values in our catalog,
+    # so caching lookups gives a nice speed boost
+    aesopus_T_idx_mapper = functools.lru_cache(maxsize=5000)(aesopus_T_idx_mapper)
+    aesopus_Z_idx_mapper = functools.lru_cache(maxsize=5000)(aesopus_Z_idx_mapper)
 
 load_aesopus()
 
+@jit
+def _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r):
+    """ This is a line of code pulled from _find_rho so that
+        it can be cleanly jit-ed. """
+    return (  10**aesopus_data[z1, t1] * z1r * t1r
+         + 10**aesopus_data[z1, t2] * z1r * t2r
+         + 10**aesopus_data[z2, t1] * z2r * t1r
+         + 10**aesopus_data[z2, t2] * z2r * t2r )
+
 def _find_rho(T_val, Z_val, logg_val):
-    k_B = consts.k_B.cgs.value
-    m_h = consts.m_p.cgs.value
-    
     T_idx = aesopus_T_idx_mapper(T_val)
     t1, t2 = int(np.floor(T_idx)), int(np.ceil(T_idx))
     t1r = 1 - (T_idx - t1)
@@ -495,11 +512,7 @@ def _find_rho(T_val, Z_val, logg_val):
     z1r = 1 - (Z_idx - z1)
     z2r = 1 - z1r
 
-    κ = (  10**aesopus_data[z1, t1] * z1r * t1r
-         + 10**aesopus_data[z1, t2] * z1r * t2r
-         + 10**aesopus_data[z2, t1] * z2r * t1r
-         + 10**aesopus_data[z2, t2] * z2r * t2r )
-
+    κ = _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r)
     ρ = aesopus_R_vals * (1e-6 * T_val)**3
 
     μ = 7/4 + .5 * np.tanh( (3500-T_val) / 600)
@@ -510,8 +523,8 @@ def _find_rho(T_val, Z_val, logg_val):
     ρ_idx = scipy.interpolate.interp1d(τ, np.arange(τ.size), kind='linear', fill_value="extrapolate")(2/3)
     ρ_val = scipy.interpolate.interp1d(τ, ρ, kind='linear', fill_value="extrapolate")(2/3)
 
-    κ_idx = scipy.interpolate.interp1d(τ, np.arange(κ.size), kind='linear', fill_value="extrapolate")(2/3)
-    κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
+    #κ_idx = scipy.interpolate.interp1d(τ, np.arange(κ.size), kind='linear', fill_value="extrapolate")(2/3)
+    #κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
     
     # This version doesn't extrapolate
 #     ρ_idx = np.interp(2/3, τ, np.arange(τ.size))
@@ -523,6 +536,7 @@ def _find_rho(T_val, Z_val, logg_val):
     return ρ_val
 
 find_rho = np.vectorize(_find_rho)
+rho_sun = find_rho(T_sun, Z_sun, logg_sun) 
 
 def FeH_to_Z(FeH):
     # TODO: Maybe still try to find what constant is baked into LAMOST's Fe/H
