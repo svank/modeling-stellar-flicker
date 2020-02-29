@@ -7,7 +7,6 @@ import scipy.optimize
 import astropy.constants as consts
 import functools
 from numba import jit
-from progressBar import ProgressBar
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
 
@@ -21,134 +20,6 @@ Z_sun = 0.016
 R_sun_cm = 6.957e10
 k_B = consts.k_B.cgs.value
 m_h = consts.m_p.cgs.value
-
-
-def merge_catalog():
-    huber_raw = np.loadtxt("Huber_2014.txt", skiprows=49, usecols=range(19))
-    
-    huber = dict()
-    for i in range(huber_raw.shape[0]):
-        row = huber_raw[i]
-        huber[int(row[0])] = row
-    
-    cranmer_raw = np.loadtxt("Cranmer_2014.txt", skiprows=30)
-    
-    cranmer = dict()
-    for i in range(cranmer_raw.shape[0]):
-        row = cranmer_raw[i]
-        cranmer[int(row[0])] = row
-    
-    mcquillan_raw = np.genfromtxt("orig_data/McQuillan_2014.txt", skip_header=32)
-    
-    mcquillan = dict()
-    for i in range(mcquillan_raw.shape[0]):
-        row = mcquillan_raw[i]
-        mcquillan[int(row[0])] = row
-        
-        
-    bastien_raw = np.loadtxt("Bastien_2016.txt", skiprows=27, unpack=True)
-    
-    lamost_raw = np.genfromtxt("orig_data/lamost_dr5_vac.out", skip_header=39,
-            delimiter=(10, 12, 17, 15, 15, 10, 16, 8, 21, 19, 11, 3, 6, 20, 23, 12, 5)) 
-    lamost = dict()
-    for i in range(lamost_raw.shape[0]):
-        row = lamost_raw[i]
-        if not np.isnan(row[1]) and not np.isnan(row[10]) and not np.isnan(row[12]):
-            lamost[int(row[1])] = row
-    
-    (KIC, kepmag, F8logg, E_F8logg, e_F8logg, Range, RMS, Teff) = bastien_raw
-    
-    catalog=np.zeros(len(KIC), dtype=[
-                   ('KIC', 'int32'),
-                   ('kepmag', 'float64'),
-                   ('F8logg', 'float64'),
-                   ('E_F8logg', 'float64'),
-                   ('e_F8logg', 'float64'),
-                   ('F8', 'float64'),
-                   ('Range', 'float64'),
-                   ('RMS', 'float64'),
-                   ('Teff', 'float64'),
-                   ('TeffH', 'float64'),
-                   ('E_TeffH', 'float64'),
-                   ('e_TeffH', 'float64'),
-                   ('loggH', 'float64'),
-                   ('E_loggH', 'float64'),
-                   ('e_loggH', 'float64'),
-                   ('MH', 'float64'),
-                   ('E_MH', 'float64'),
-                   ('e_MH', 'float64'),
-                   ('TeffC', 'float64'),
-                   ('loggC', 'float64'),
-                   ('MC', 'float64'),
-                   ('tau_effC', 'float64'),
-                   ('MaC', 'float64'),
-                   ('sigmaC', 'float64'),
-                   ('F8_modC', 'float64'),
-                   ('F8_obsC', 'float64'),
-                   ('RvarC', 'float64'),
-                   ('has_C', 'bool_'),
-                   ('FeH', 'float64'),
-                   ('e_FeH', 'float64'),
-                   ('has_L', 'bool_'),
-                   ('PRot', 'float64'),
-                   ('e_PRot', 'float64'),
-                   ('RPer', 'float64'),
-                   ('PFlag', 'str_'),
-                   ('has_M', 'bool_'),
-                   ('myF8', 'float64')])
-    catalog['KIC'] = KIC
-    catalog['kepmag'] = kepmag
-    catalog['F8logg'] = F8logg
-    catalog['E_F8logg'] = E_F8logg
-    catalog['e_F8logg'] = e_F8logg
-    catalog['Range'] = Range
-    catalog['RMS'] = RMS
-    catalog['Teff'] = Teff
-    
-    pb = ProgressBar(len(KIC))
-    for i, kic in enumerate(KIC):
-        h_data = huber[kic]
-        catalog['TeffH'][i]   = h_data[1]
-        catalog['E_TeffH'][i] = h_data[2]
-        catalog['e_TeffH'][i] = h_data[3]
-        catalog['loggH'][i]   = h_data[4]
-        catalog['E_loggH'][i] = h_data[5]
-        catalog['e_loggH'][i] = h_data[6]
-        catalog['MH'][i]      = h_data[13]
-        catalog['E_MH'][i]    = h_data[14]
-        catalog['e_MH'][i]    = h_data[15]
-        
-        if kic in cranmer:
-            catalog['has_C'][i] = 1
-            c_data = cranmer[kic]
-            catalog['TeffC'][i] = c_data[1]
-            catalog['loggC'][i] = c_data[2]
-            catalog['MC'][i] = c_data[3]
-            catalog['tau_effC'][i] = c_data[5]
-            catalog['MaC'][i] = c_data[6]
-            catalog['sigmaC'][i] = c_data[7]
-            catalog['F8_modC'][i] = c_data[8]
-            catalog['F8_obsC'][i] = c_data[9]
-            catalog['RvarC'][i] = c_data[10]
-        
-        if kic in lamost:
-            catalog['has_L'][i] = 1
-            l_data = lamost[kic]
-            catalog['FeH'][i] = float(l_data[10])
-            catalog['e_FeH'][i] = float(l_data[12])
-        
-        if kic in mcquillan:
-            catalog['has_M'][i] = 1
-            m_data = mcquillan[kic]
-            catalog['PRot'][i] = float(m_data[4])
-            catalog['e_PRot'][i] = float(m_data[5])
-            catalog['RPer'][i] = float(m_data[6])
-            catalog['PFlag'][i] = m_data[10]
-        pb.increment()
-        pb.display()
-    pb.display(True)
-    np.save('merged_catalog.npy', catalog)
-
 
 def load_catalog(fname='merged_catalog.npy'):
     return np.load(fname)
@@ -555,8 +426,6 @@ def calc_convective_turnover_time(Teff):
 
 
 
-
-#merge_catalog()
 
 catalog = load_catalog()
 
