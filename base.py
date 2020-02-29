@@ -206,6 +206,34 @@ def calc_N_gran(R, Teff, logg):
     Lambda = (Teff / T_sun) / (10**logg / 10**logg_sun) * 1e8 # gran size, cm
     return 2 * np.pi * R**2 / Lambda**2
 
+def outline_data(x=None, y=None, **kwargs):
+    if x is None:
+        x = catalog['TeffH']
+    if y is None:
+        y = catalog['loggH']
+    
+    H, x_edge, y_edge = np.histogram2d(x, y, bins=100)
+    # Like scipy's binned stats function, this gives
+    # a transposed H
+    H = H.T
+    
+    # Countour plotting wants the x & y arrays to match the
+    # shape of the z array, so work out the middle of each bin
+    x_edge = (x_edge[1:] + x_edge[:-1]) / 2
+    y_edge = (y_edge[1:] + y_edge[:-1]) / 2
+    XX, YY = np.meshgrid(x_edge, y_edge)
+    
+    H[ H > 0] = 1
+    
+    if "alpha" not in kwargs:
+        kwargs["alpha"] = 0.5
+    if "colors" not in kwargs:
+        kwargs["colors"] = "black"
+    if "color" in kwargs:
+        kwargs["colors"] = kwargs["color"]
+    plt.contour(XX, YY, H, levels=[0.5], **kwargs)
+
+
 
 # ---- New Versions ----
 
