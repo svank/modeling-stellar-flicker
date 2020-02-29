@@ -419,7 +419,10 @@ def FeH_to_Z(FeH):
 def calc_convective_turnover_time(Teff):
     return 0.002 + 314.24 * np.exp(-(Teff/1952.5) - (Teff/6250)**18)
 
-
+def calc_bandpass_correction(Teff, logg):
+    T_src, logg_src, sig_mult_src = np.genfromtxt("orig_data/bandpass_adjustment.txt", skip_header=4, unpack=True)
+    sig_mult = scipy.interpolate.griddata((T_src, logg_src), sig_mult_src, (Teff, logg), 'linear')
+    return sig_mult
 
 # -----------------
 
