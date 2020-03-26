@@ -16,7 +16,7 @@ T_sun = 5777 # K
 logg_sun = 4.438 # log-cgs units, I suppose
 ν_sun = 3.106e-3 # Hz
 Ma_sun = 0.26 # As given in Cranmer 2014
-Z_sun = 0.016
+Z_sun = 0.01696
 R_sun_cm = 6.957e10
 k_B = consts.k_B.cgs.value
 m_h = consts.m_p.cgs.value
@@ -442,7 +442,7 @@ def FeH_to_Z(FeH):
     # values. Steve had found that the solar Fe/H hasn't changed much over time,
     # so there's hope that what they used is what everyone else uses and we
     # don't need to find theirs specifically.
-    return 0.01696 * 10**FeH
+    return Z_sun * 10**FeH
 
 def calc_convective_turnover_time(Teff):
     return 0.002 + 314.24 * np.exp(-(Teff/1952.5) - (Teff/6250)**18)
