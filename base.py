@@ -250,9 +250,9 @@ def calc_phi_new(Ma):
     return calc_theta_new(Ma) / calc_theta_new(Ma_sun)
 
 def calc_theta_new(Ma):
-    A = 1.62191904e+00
-    B = 1.59965328e+01
-    e2 = -1.03057868e-02
+    A = 1.71606151
+    B = 16.28330745
+    e2 = 0.05803847
     return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) ** (1)
 
 def calc_theta_min(Ma):
@@ -281,7 +281,7 @@ def calc_theta_ratio_to_envelope(theta_emp, Ma):
 
 def _calc_Ma_from_phi(phi):
     f = lambda Ma: np.abs(calc_phi_new(Ma) - phi)
-    return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 2000)).x
+    return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 1.5)).x
 
 calc_Ma_from_phi = np.vectorize(_calc_Ma_from_phi)
 
