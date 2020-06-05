@@ -438,6 +438,43 @@ def _find_rho(T_val, Z_val, logg_val):
 find_rho = np.vectorize(_find_rho)
 rho_sun = find_rho(T_sun, Z_sun, logg_sun) 
 
+def _find_kappa(T_val, Z_val, logg_val):
+    T_idx = aesopus_T_idx_mapper(T_val)
+    t1, t2 = int(np.floor(T_idx)), int(np.ceil(T_idx))
+    t1r = 1 - (T_idx - t1)
+    t2r = 1 - t1r
+
+    Z_idx = aesopus_Z_idx_mapper(Z_val)
+    z1, z2 = int(np.floor(Z_idx)), int(np.ceil(Z_idx))
+    z1r = 1 - (Z_idx - z1)
+    z2r = 1 - z1r
+
+    κ = _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r)
+    ρ = aesopus_R_vals * (1e-6 * T_val)**3
+
+    μ = 7/4 + .5 * np.tanh( (3500-T_val) / 600)
+    H = k_B * T_val / μ / m_h / 10**logg_val
+
+    τ = κ * ρ * H
+
+    #ρ_idx = scipy.interpolate.interp1d(τ, np.arange(τ.size), kind='linear', fill_value="extrapolate")(2/3)
+    #ρ_val = scipy.interpolate.interp1d(τ, ρ, kind='linear', fill_value="extrapolate")(2/3)
+
+    κ_idx = scipy.interpolate.interp1d(τ, np.arange(κ.size), kind='linear', fill_value="extrapolate")(2/3)
+    κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
+    
+    # This version doesn't extrapolate
+#     ρ_idx = np.interp(2/3, τ, np.arange(τ.size))
+#     ρ_val = np.interp(2/3, τ, ρ)
+
+#     κ_idx = np.interp(2/3, τ, np.arange(κ.size))
+#     κ_val = np.interp(2/3, τ, κ)
+    
+    return κ_val
+
+find_kappa = np.vectorize(_find_kappa)
+kappa_sun = find_kappa(T_sun, Z_sun, logg_sun) 
+
 def FeH_to_Z(FeH):
     # TODO: Maybe still try to find what constant is baked into LAMOST's Fe/H
     # values. Steve had found that the solar Fe/H hasn't changed much over time,
