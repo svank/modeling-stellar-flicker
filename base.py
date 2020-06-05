@@ -309,8 +309,9 @@ def calc_F8_min(logg, Teff, M, Z, Ma=None):
     phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
     return calc_F8_new(logg, Teff, M, Z, phi, Ma)
 
-def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1):
-    Ma = calc_Ma_new(logg, Teff, Z)
+def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None):
+    if Ma is None:
+        Ma = calc_Ma_new(logg, Teff, Z) * Ma_mult
     bound_lower = calc_F8_min(logg, Teff, M, Z, Ma) * sig_mult
     bound_upper = calc_F8_max(logg, Teff, M, Z, Ma) * sig_mult
     ratio_lower = F8_emp / bound_lower
