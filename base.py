@@ -54,7 +54,7 @@ def F8_from_logg(logg_array):
     return F8
 
 
-def calc_σ(Teff, M, logg, S=1, Φ=None):
+def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
     Cranmer 2014's Eqn 1
     """
@@ -68,10 +68,15 @@ def calc_σ(Teff, M, logg, S=1, Φ=None):
         # Clamp Φ at zero
         Φ = 0 * (Φ < 0) + Φ * (Φ >= 0)
     
-    # Why 1.03 power when Samadi has 1.10? See Samadi Figure B.1
+    # Why 1.03 power when Samadi has 1.10? See Samadi (2013b) Figure B.1
+    # Note Cranmer (2014) used an exponent of 1.03 (see Samadi Figure B.1)
+    # Here we use the 1.10 from the main text of Samadi (2013b)
     return 0.039 * ( (Teff / T_sun) ** (3/4)
                      * (M_sun * ν_sun / M / ν_max) ** (1/2)
-                     * Φ**2 )**1.03
+                     * Φ**2 )**override_exponent
+
+def calc_σ_cranmer_2014(Teff, M, logg, S=1, Φ=None):
+    return calc_σ(Teff, M, logg, S, Φ, override_exponent=1.03)
 
 
 def calc_ν_max(logg, Teff):
