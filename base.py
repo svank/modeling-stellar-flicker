@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import scipy.optimize
+import scipy.stats
 import astropy.constants as consts
 import functools
 from numba import jit
@@ -498,9 +499,34 @@ def calc_bandpass_correction(Teff, logg):
 
 # -----------------
 
-
-
-
+def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
+                  vmin=None, vmax=None, scale_fcn=lambda x: x,
+                  stat='mean', log_norm=False,
+                  show_y_label=True, imshowargs=None,
+                  fill_in_bg=True):
+    if imshowargs is None:
+        imshowargs = {}
+    if log_norm:
+        imshowargs['norm'] = LogNorm()
+    
+    stat, r, c, binn = scipy.stats.binned_statistic_2d(
+    cat['loggH'], cat['TeffH'], quantity, stat, 100,
+    range=[[2.5, cat['loggH'].max()], [cat['TeffH'].min(), cat['TeffH'].max()]])
+    
+    if fill_in_bg:
+        plt.gca().set_facecolor('black')
+    
+    plt.imshow(scale_fcn(stat),
+               extent=(c.min(), c.max(), r.max(), r.min()),
+               vmin=vmin, vmax=vmax,
+               aspect='auto', cmap=cmap,
+               **imshowargs)
+    
+    plt.xlabel(r"$T_{eff}$ (K)")
+    if show_y_label:
+        plt.ylabel("$\log\ g$")
+    plt.xlim(plt.xlim()[1], plt.xlim()[0])
+    plt.colorbar().set_label(label)
 
 catalog = load_catalog()
 
