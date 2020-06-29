@@ -488,6 +488,9 @@ def FeH_to_Z(FeH):
     # don't need to find theirs specifically.
     return Z_sun * 10**FeH
 
+def Z_to_FeH(Z):
+    return np.log10(Z / Z_sun)
+
 def calc_convective_turnover_time(Teff):
     return 0.002 + 314.24 * np.exp(-(Teff/1952.5) - (Teff/6250)**18)
 
