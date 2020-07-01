@@ -26,33 +26,32 @@ def load_catalog(fname='merged_catalog.npy'):
     return np.load(fname)
 
 
-def F8_from_logg(logg_array):
+def _F8_from_logg(logg):
     """Calculates F8 flicker values from log(g)
     Bastien 2016's Eqn 4.
     
     log g = 1.3724221 - 3.5002686 x - 1.6838185 x^2 - 0.37909094 x^3
     x = log10(F8)
     """
-    F8 = np.zeros_like(logg_array)
-    for i, logg in enumerate(logg_array):
-        # ax^3 + bx^2 + cx + d = 0
-        a = -0.37909094
-        b = -1.6838185
-        c = -3.5002686
-        d =  1.3724221 - logg
-        
-        # Numpy solves for roots generally, computing "the eigenvalues of
-        # the companion matrix"
-        roots = np.roots([a, b, c, d])
-        # Select real root
-        root = roots[np.imag(roots) == 0]
-        root = np.real(root)
-        
-        if root.size != 1:
-            raise RuntimeError("Cubic root is ambiguous")
-        
-        F8[i] = 10**root
-    return F8
+    # ax^3 + bx^2 + cx + d = 0
+    a = -0.37909094
+    b = -1.6838185
+    c = -3.5002686
+    d =  1.3724221 - logg
+    
+    # Numpy solves for roots generally, computing "the eigenvalues of
+    # the companion matrix"
+    roots = np.roots([a, b, c, d])
+    # Select real root
+    root = roots[np.imag(roots) == 0]
+    root = np.real(root)
+    
+    if root.size != 1:
+        raise RuntimeError("Cubic root is ambiguous")
+    
+    return 10**root
+
+F8_from_logg = np.vectorize(_F8_from_logg)
 
 
 def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
