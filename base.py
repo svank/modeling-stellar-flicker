@@ -53,6 +53,19 @@ def _F8_from_logg(logg):
 
 F8_from_logg = np.vectorize(_F8_from_logg)
 
+def F8_to_logg(F8):
+    """Calculates logg from an F8 value using
+    Bastien 2016's Eqn 4.
+    
+    log g = 1.3724221 - 3.5002686 x - 1.6838185 x^2 - 0.37909094 x^3
+    x = log10(F8)
+    """
+    a = -0.37909094
+    b = -1.6838185
+    c = -3.5002686
+    d =  1.3724221
+    x = np.log10(F8)
+    return a * x**3 + b * x**2 + c * x + d
 
 def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
