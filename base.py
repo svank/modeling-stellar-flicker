@@ -225,30 +225,36 @@ def calc_N_gran(R, Teff, logg):
     return 2 * np.pi * R**2 / Lambda**2
 
 def outline_data(x=None, y=None, **kwargs):
+    """Draws an outline of a set of points.
+    
+    Accepts two one-dimentional arrays containing the x and y coordinates
+    of the data set to be outlined.
+    All kwargs are passed to plt.contour"""
     if x is None:
         x = catalog['TeffH']
     if y is None:
         y = catalog['loggH']
     
     H, x_edge, y_edge = np.histogram2d(x, y, bins=100)
-    # Like scipy's binned stats function, this gives
-    # a transposed H
+    # H needs to be transposed for plt.contour
     H = H.T
     
-    # Countour plotting wants the x & y arrays to match the
+    # Contour plotting wants the x & y arrays to match the
     # shape of the z array, so work out the middle of each bin
     x_edge = (x_edge[1:] + x_edge[:-1]) / 2
     y_edge = (y_edge[1:] + y_edge[:-1]) / 2
     XX, YY = np.meshgrid(x_edge, y_edge)
     
-    H[ H > 0] = 1
+    H[H > 0] = 1
     
+    # Fill in some default plot args if not given
     if "alpha" not in kwargs:
         kwargs["alpha"] = 0.5
     if "colors" not in kwargs:
         kwargs["colors"] = "black"
     if "color" in kwargs:
         kwargs["colors"] = kwargs["color"]
+    
     plt.contour(XX, YY, H, levels=[0.5], **kwargs)
 
 
