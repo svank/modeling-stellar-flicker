@@ -525,7 +525,7 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
                   stat='mean', log_norm=False,
                   show_y_label=True, imshowargs=None,
-                  fill_in_bg=True):
+                  fill_in_bg=True, show_colorbar=True):
     if imshowargs is None:
         imshowargs = {}
     if log_norm:
@@ -538,17 +538,20 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
     if fill_in_bg:
         plt.gca().set_facecolor('black')
     
-    plt.imshow(scale_fcn(stat),
-               extent=(c.min(), c.max(), r.max(), r.min()),
-               vmin=vmin, vmax=vmax,
-               aspect='auto', cmap=cmap,
-               **imshowargs)
+    im = plt.imshow(scale_fcn(stat),
+                    extent=(c.min(), c.max(), r.max(), r.min()),
+                    vmin=vmin, vmax=vmax,
+                    aspect='auto', cmap=cmap,
+                    **imshowargs)
     
     plt.xlabel(r"$T_{eff}$ (K)")
     if show_y_label:
         plt.ylabel("$\log\ g$")
     plt.xlim(plt.xlim()[1], plt.xlim()[0])
-    plt.colorbar().set_label(label)
+    
+    if show_colorbar:
+        plt.colorbar().set_label(label)
+    return im
 
 catalog = load_catalog()
 
