@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import scipy.optimize
 import scipy.stats
 import astropy.constants as consts
