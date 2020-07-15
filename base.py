@@ -22,6 +22,10 @@ Z_sun = 0.01696
 R_sun_cm = 6.957e10
 k_B = consts.k_B.cgs.value
 m_h = consts.m_p.cgs.value
+G = consts.G.cgs.value
+sigma_sb = consts.sigma_sb.cgs.value
+
+DEFAULT_BETA = 10.8
 
 def load_catalog(fname='merged_catalog.npy'):
     return np.load(fname)
@@ -483,7 +487,90 @@ def calc_bandpass_correction(Teff, logg):
     sig_mult = scipy.interpolate.griddata((T_src, logg_src), sig_mult_src, (Teff, logg), 'linear')
     return sig_mult
 
+
+
 # -----------------
+# "First-principles" (or at least sort-of) implementation
+
+
+
+mu = lambda Teff: 7/4 + .5 * np.tanh((3500-Teff)/600)
+
+c_s = lambda Teff: np.sqrt((5/3) * k_B * Teff / mu(Teff) / m_h)
+
+def calc_Ma_fp(logg, Teff, Z):
+    C = 1.171e-4 * Teff**1.406 * (10**logg)**-0.157 * (10**Z_to_FeH(Z))**0.098
+    rho = find_rho(Teff, Z, logg)
+    v = (sigma_sb * Teff**4 / (C * rho)) ** (1/3)
+    Ma = v / c_s(Teff)
+    return Ma
+
+def H_p(T, logg):
+    return k_B / mu(T) / m_h * T / 10**logg
+
+def tau_g(beta, T, logg, Z):
+    rho, kappa = find_rho(T, Z, logg, and_kappa=True) 
+    return beta * H_p(T, logg) * rho * kappa
+
+def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, T, Z)
+    if phi is None:
+        theta = calc_theta_new(Ma)
+    else:
+        # TODO: Look at this in light of the new Ma function
+        theta = phi * calc_theta_new(Ma_sun)
+    M = M * M_sun_grams
+    prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
+    sigma = prefix * np.sqrt(tau_g(beta, T, logg, Z)) * beta * H_p(T, logg) * np.sqrt(10**logg) / np.sqrt(M) * theta ** 2
+    # Return in units of ppt
+    return sigma * 1000
+
+def calc_F8_from_sigma_fp(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
+    """Cranmer 2014's Eqn 8"""
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, Teff, Z)
+    
+    ν_8 = 1 / (8 * 3600)
+    
+    w_rms = Ma * c_s(Teff)
+    Lambda = beta * H_p(Teff, logg)
+    τ_eff = Lambda / w_rms
+    
+    return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
+
+def calc_σ_from_F8_fp(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
+    """Cranmer 2014's Eqn 8"""
+    ν_8 = 1 / (8 * 3600)
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, Teff, Z)
+    
+    w_rms = Ma * c_s(Teff)
+    Lambda = beta * H_p(Teff, logg)
+    τ_eff = Lambda / w_rms
+    
+    return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
+
+def calc_F8_fp(logg, T, M, Z, phi=None, Ma=None, beta=DEFAULT_BETA):
+    sigma = calc_sigma_fp(T, M, logg, Z, phi=phi, Ma=Ma, beta=beta)
+    return calc_F8_from_sigma_fp(logg, T, Z, sigma, Ma=Ma)
+
+def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
+    # F8 is expected in units of ppt
+    F8 = F8 / 1000
+    
+    σ = calc_σ_from_F8_fp(logg, Teff, Z, F8, beta=beta)
+    M = M * M_sun_grams
+    prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
+    factor = prefix * np.sqrt(tau_g(beta, Teff, logg, Z)) * beta * H_p(Teff, logg) * np.sqrt(10**logg) / np.sqrt(M)
+    theta = np.sqrt(σ / factor)
+    return theta
+
+
+
+# -----------------
+
+
 
 def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
