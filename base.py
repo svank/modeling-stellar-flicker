@@ -30,7 +30,6 @@ DEFAULT_BETA = 10.8
 def load_catalog(fname='merged_catalog.npy'):
     return np.load(fname)
 
-
 def _F8_from_logg(logg):
     """Calculates F8 flicker values from log(g)
     Bastien 2016's Eqn 4.
@@ -96,13 +95,11 @@ def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
 def calc_σ_cranmer_2014(Teff, M, logg, S=1, Φ=None):
     return calc_σ(Teff, M, logg, S, Φ, override_exponent=1.03)
 
-
 def calc_ν_max(logg, Teff):
     """Calculates peak p-mode frequency
     Cranmer 2014's Eqn 2
     """
     return ν_sun * 10**logg / 10**logg_sun * (T_sun / Teff)**0.5
-
 
 def calc_Ma(logg, Teff):
     """Calculates Mach number
@@ -110,10 +107,8 @@ def calc_Ma(logg, Teff):
     """
     return 0.26 * (Teff / T_sun)**2.35 * (10**logg_sun / 10**logg) ** 0.152
 
-
 def calc_phi(*args, **kwargs):
     return calc_Φ(*args, **kwargs)
-
 
 def calc_Φ(Ma, make_monotonic=True):
     """Calculates the temperature fluctuation amplitude
@@ -131,7 +126,6 @@ def calc_Φ(Ma, make_monotonic=True):
     return ((make_monotonic * Ma > (-B/2/A)) * max_val
             + ((not make_monotonic) or Ma <= (-B/2/A)) * quadratic_val)
 
-
 def calc_F8_from_σ(logg, Teff, σ, S=1):
     """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
@@ -142,16 +136,13 @@ def calc_F8_from_σ(logg, Teff, σ, S=1):
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
-
 def calc_F8(logg, Teff, M, S=1, Φ=None):
     σ = calc_σ(Teff, M, logg, S, Φ)
     return calc_F8_from_σ(logg, Teff, σ, S)
 
-
 def calc_cranmer_S(Teff):
     value = 1 / (1 + (Teff - 5400) / 1500)
     return 1 * (Teff <= 5400) + value * (Teff > 5400)
-
 
 def fit_S(logg_arr, Teff_arr, M_arr, F8obs_arr, max_S=2, too_large_fill=0):
     S = np.zeros_like(logg_arr)
@@ -176,7 +167,6 @@ def fit_S(logg_arr, Teff_arr, M_arr, F8obs_arr, max_S=2, too_large_fill=0):
     S[S > max_S] = too_large_fill
     return S
 
-
 def fit_Φ(logg_arr, Teff_arr, M_arr, F8obs_arr):
     Φ = np.zeros_like(logg_arr)
     
@@ -196,71 +186,9 @@ def fit_Φ(logg_arr, Teff_arr, M_arr, F8obs_arr):
     
     return Φ
 
-
-def plot_outline(newer_version=True):
-    x = np.linspace(.015, .34, 100)
-    
-    if newer_version:
-        poly_fit = lambda x: 1.3724221 - 3.5002686*np.log10(x) - 1.6838185*np.log10(x)**2 - 0.37909094*np.log10(x)**3
-    else:
-        poly_fit = lambda x: 1.15136 - 3.59637*np.log10(x) - 1.40002*np.log10(x)**2 - 0.22993*np.log10(x)**3
-        
-    plt.plot(x, poly_fit(x) + 0.2, color='black')
-    plt.plot(x, poly_fit(x) - 0.2, color='black')
-    
-    plt.plot([.015, .015], [poly_fit(.015)+.2, poly_fit(.015)-.2], color='black')
-    plt.plot([.34, .34], [poly_fit(.34)+.2, poly_fit(.34)-.2], color='black')
-    
-    plt.gca().invert_yaxis()
-    
-def plot_ZAMS_Teff_logg(**kwargs):
-    M, R, L, T, T_core, rho_core = np.genfromtxt(
-            "orig_data/zams_star_properties.dat.txt",
-            skip_header=10, unpack=True)
-    from astropy.constants import G
-    M *= M_sun_grams
-    R *= R_sun_cm
-    
-    g = G.cgs.value * M / R**2
-    
-    plt.plot(T, np.log10(g), **kwargs)
-
 def calc_N_gran(R, Teff, logg):
     Lambda = (Teff / T_sun) / (10**logg / 10**logg_sun) * 1e8 # gran size, cm
     return 2 * np.pi * R**2 / Lambda**2
-
-def outline_data(x=None, y=None, **kwargs):
-    """Draws an outline of a set of points.
-    
-    Accepts two one-dimentional arrays containing the x and y coordinates
-    of the data set to be outlined.
-    All kwargs are passed to plt.contour"""
-    if x is None:
-        x = catalog['TeffH']
-    if y is None:
-        y = catalog['loggH']
-    
-    H, x_edge, y_edge = np.histogram2d(x, y, bins=100)
-    # H needs to be transposed for plt.contour
-    H = H.T
-    
-    # Contour plotting wants the x & y arrays to match the
-    # shape of the z array, so work out the middle of each bin
-    x_edge = (x_edge[1:] + x_edge[:-1]) / 2
-    y_edge = (y_edge[1:] + y_edge[:-1]) / 2
-    XX, YY = np.meshgrid(x_edge, y_edge)
-    
-    H[H > 0] = 1
-    
-    # Fill in some default plot args if not given
-    if "alpha" not in kwargs:
-        kwargs["alpha"] = 0.5
-    if "colors" not in kwargs:
-        kwargs["colors"] = "black"
-    if "color" in kwargs:
-        kwargs["colors"] = kwargs["color"]
-    
-    plt.contour(XX, YY, H, levels=[0.5], **kwargs)
 
 
 
@@ -349,7 +277,6 @@ def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, M
     out[F8_emp < bound_lower] = ratio_lower[F8_emp < bound_lower]
     out[F8_emp > bound_upper] = ratio_upper[F8_emp > bound_upper]
     return out
-
 
 def calc_σ_new(Teff, M, logg, Z, Φ=None):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
@@ -572,6 +499,67 @@ def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
 
 
 
+def plot_outline(newer_version=True):
+    x = np.linspace(.015, .34, 100)
+    
+    if newer_version:
+        poly_fit = lambda x: 1.3724221 - 3.5002686*np.log10(x) - 1.6838185*np.log10(x)**2 - 0.37909094*np.log10(x)**3
+    else:
+        poly_fit = lambda x: 1.15136 - 3.59637*np.log10(x) - 1.40002*np.log10(x)**2 - 0.22993*np.log10(x)**3
+        
+    plt.plot(x, poly_fit(x) + 0.2, color='black')
+    plt.plot(x, poly_fit(x) - 0.2, color='black')
+    
+    plt.plot([.015, .015], [poly_fit(.015)+.2, poly_fit(.015)-.2], color='black')
+    plt.plot([.34, .34], [poly_fit(.34)+.2, poly_fit(.34)-.2], color='black')
+    
+    plt.gca().invert_yaxis()
+    
+def plot_ZAMS_Teff_logg(**kwargs):
+    M, R, L, T, T_core, rho_core = np.genfromtxt(
+            "orig_data/zams_star_properties.dat.txt",
+            skip_header=10, unpack=True)
+    from astropy.constants import G
+    M *= M_sun_grams
+    R *= R_sun_cm
+    
+    g = G.cgs.value * M / R**2
+    
+    plt.plot(T, np.log10(g), **kwargs)
+
+def outline_data(x=None, y=None, **kwargs):
+    """Draws an outline of a set of points.
+    
+    Accepts two one-dimentional arrays containing the x and y coordinates
+    of the data set to be outlined.
+    All kwargs are passed to plt.contour"""
+    if x is None:
+        x = catalog['TeffH']
+    if y is None:
+        y = catalog['loggH']
+    
+    H, x_edge, y_edge = np.histogram2d(x, y, bins=100)
+    # H needs to be transposed for plt.contour
+    H = H.T
+    
+    # Contour plotting wants the x & y arrays to match the
+    # shape of the z array, so work out the middle of each bin
+    x_edge = (x_edge[1:] + x_edge[:-1]) / 2
+    y_edge = (y_edge[1:] + y_edge[:-1]) / 2
+    XX, YY = np.meshgrid(x_edge, y_edge)
+    
+    H[H > 0] = 1
+    
+    # Fill in some default plot args if not given
+    if "alpha" not in kwargs:
+        kwargs["alpha"] = 0.5
+    if "colors" not in kwargs:
+        kwargs["colors"] = "black"
+    if "color" in kwargs:
+        kwargs["colors"] = kwargs["color"]
+    
+    plt.contour(XX, YY, H, levels=[0.5], **kwargs)
+
 def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
                   stat='mean', log_norm=False,
@@ -607,3 +595,4 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
 catalog = load_catalog()
 
 catalog['F8'] = F8_from_logg(catalog['F8logg'])
+
