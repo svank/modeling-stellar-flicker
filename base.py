@@ -562,7 +562,7 @@ def outline_data(x=None, y=None, **kwargs):
 
 def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
-                  stat='mean', log_norm=False,
+                  stat='mean', log_norm=False, show_x_label=True,
                   show_y_label=True, imshowargs=None,
                   fill_in_bg=True, show_colorbar=True):
     if imshowargs is None:
@@ -583,7 +583,8 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
                     aspect='auto', cmap=cmap,
                     **imshowargs)
     
-    plt.xlabel(r"$T_{eff}$ (K)")
+    if show_x_label:
+        plt.xlabel(r"$T_{eff}$ (K)")
     if show_y_label:
         plt.ylabel("$\log\ g$")
     plt.xlim(plt.xlim()[1], plt.xlim()[0])
