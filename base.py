@@ -426,7 +426,7 @@ mu = lambda Teff: 7/4 + .5 * np.tanh((3500-Teff)/600)
 c_s = lambda Teff: np.sqrt((5/3) * k_B * Teff / mu(Teff) / m_h)
 
 def calc_Ma_fp(logg, Teff, Z):
-    C = 1.171e-4 * Teff**1.406 * (10**logg)**-0.157 * (10**Z_to_FeH(Z))**0.098
+    C = 6.086e-4 * Teff**1.406 * (10**logg)**-0.157 * (10**Z_to_FeH(Z))**0.098
     rho = find_rho(Teff, Z, logg)
     v = (sigma_sb * Teff**4 / (C * rho)) ** (1/3)
     Ma = v / c_s(Teff)
