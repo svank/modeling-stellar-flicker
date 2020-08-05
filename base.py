@@ -481,7 +481,7 @@ def calc_σ_from_F8_fp(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
 
 def calc_F8_fp(logg, T, M, Z, phi=None, Ma=None, beta=DEFAULT_BETA):
     sigma = calc_sigma_fp(T, M, logg, Z, phi=phi, Ma=Ma, beta=beta)
-    return calc_F8_from_sigma_fp(logg, T, Z, sigma, Ma=Ma)
+    return calc_F8_from_sigma_fp(logg, T, Z, sigma, Ma=Ma, beta=beta)
 
 def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     # F8 is expected in units of ppt
