@@ -377,18 +377,19 @@ def _find_rho(T_val, Z_val, logg_val, and_kappa=False):
     τ = κ * ρ * H
 
     # This version doesn't extrapolate
-#     ρ_idx = np.interp(2/3, τ, np.arange(τ.size))
-#     ρ_val = np.interp(2/3, τ, ρ)
+    #ρ_idx = np.interp(2/3, τ, np.arange(τ.size))
+    ρ_val = np.interp(2/3, τ, ρ, left=np.nan, right=np.nan)
 
-#     κ_idx = np.interp(2/3, τ, np.arange(κ.size))
-#     κ_val = np.interp(2/3, τ, κ)
-    
     #ρ_idx = scipy.interpolate.interp1d(τ, np.arange(τ.size), kind='linear', fill_value="extrapolate")(2/3)
-    ρ_val = scipy.interpolate.interp1d(τ, ρ, kind='linear', fill_value="extrapolate")(2/3)
+    #ρ_val = scipy.interpolate.interp1d(τ, ρ, kind='linear', fill_value="extrapolate")(2/3)
 
     if and_kappa:
         #κ_idx = scipy.interpolate.interp1d(τ, np.arange(κ.size), kind='linear', fill_value="extrapolate")(2/3)
-        κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
+        #κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
+        
+        #κ_idx = np.interp(2/3, τ, np.arange(κ.size))
+        κ_val = np.interp(2/3, τ, κ, left=np.nan, right=np.nan)
+         
         return ρ_val, κ_val
     return ρ_val
 
