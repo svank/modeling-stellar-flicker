@@ -14,7 +14,7 @@ matplotlib.rcParams['ytick.direction'] = 'out'
 
 M_sun = 1 # Solar masses
 M_sun_grams = 1.998e33
-T_sun = 5777 # K
+T_sun = 5770 # K
 logg_sun = 4.438 # log-cgs units, I suppose
 ν_sun = 3.106e-3 # Hz
 Ma_sun = 0.26 # As given in Cranmer 2014
