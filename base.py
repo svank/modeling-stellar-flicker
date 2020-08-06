@@ -561,7 +561,7 @@ def outline_data(x=None, y=None, **kwargs):
     
     plt.contour(XX, YY, H, levels=[0.5], **kwargs)
 
-def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
+def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
                   stat='mean', log_norm=False, show_x_label=True,
                   show_y_label=True, imshowargs=None,
@@ -569,10 +569,12 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
     if imshowargs is None:
         imshowargs = {}
     if log_norm:
-        imshowargs['norm'] = LogNorm()
+        imshowargs['norm'] = LogNorm(vmin=vmin, vmax=vmax)
+        vmin = None
+        vmax = None
     
     stat, r, c, binn = scipy.stats.binned_statistic_2d(
-    cat['loggH'], cat['TeffH'], quantity, stat, 100,
+    cat['loggH'], cat['TeffH'], quantity, stat, binsize,
     range=[[2.5, cat['loggH'].max()], [cat['TeffH'].min(), cat['TeffH'].max()]])
     
     if fill_in_bg:
@@ -582,6 +584,7 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis",
                     extent=(c.min(), c.max(), r.max(), r.min()),
                     vmin=vmin, vmax=vmax,
                     aspect='auto', cmap=cmap,
+                    interpolation='none',
                     **imshowargs)
     
     if show_x_label:
