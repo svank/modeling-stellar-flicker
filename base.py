@@ -574,8 +574,8 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
         vmax = None
     
     stat, r, c, binn = scipy.stats.binned_statistic_2d(
-    cat['loggH'], cat['TeffH'], quantity, stat, binsize,
-    range=[[2.5, cat['loggH'].max()], [cat['TeffH'].min(), cat['TeffH'].max()]])
+        cat['loggH'], cat['TeffH'], quantity, stat, binsize,
+        range=[[2.5, cat['loggH'].max()], [cat['TeffH'].min(), cat['TeffH'].max()]])
     
     if fill_in_bg:
         plt.gca().set_facecolor('black')
