@@ -436,9 +436,12 @@ def calc_Ma_fp(logg, Teff, Z):
 def H_p(T, logg):
     return k_B / mu(T) / m_h * T / 10**logg
 
-def tau_g(beta, T, logg, Z):
+def Lambda(T, logg, beta=DEFAULT_BETA):
+    return beta * H_p(T, logg)
+    
+def tau_g(T, logg, Z, beta=DEFAULT_BETA):
     rho, kappa = find_rho(T, Z, logg, and_kappa=True) 
-    return beta * H_p(T, logg) * rho * kappa
+    return Lambda(T, logg, beta) * rho * kappa
 
 def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     if Ma is None:
@@ -450,7 +453,7 @@ def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
         theta = phi * calc_theta_new(Ma_sun)
     M = M * M_sun_grams
     prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
-    sigma = prefix * np.sqrt(tau_g(beta, T, logg, Z)) * beta * H_p(T, logg) * np.sqrt(10**logg) / np.sqrt(M) * theta ** 2
+    sigma = prefix * np.sqrt(tau_g(T, logg, Z, beta)) * Lambda(T, logg, beta) * np.sqrt(10**logg) / np.sqrt(M) * theta ** 2
     # Return in units of ppt
     return sigma * 1000
 
@@ -490,7 +493,7 @@ def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     σ = calc_σ_from_F8_fp(logg, Teff, Z, F8, beta=beta)
     M = M * M_sun_grams
     prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
-    factor = prefix * np.sqrt(tau_g(beta, Teff, logg, Z)) * beta * H_p(Teff, logg) * np.sqrt(10**logg) / np.sqrt(M)
+    factor = prefix * np.sqrt(tau_g(Teff, logg, Z, beta)) * beta * H_p(Teff, logg) * np.sqrt(10**logg) / np.sqrt(M)
     theta = np.sqrt(σ / factor)
     return theta
 
