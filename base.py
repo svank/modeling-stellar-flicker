@@ -436,8 +436,22 @@ def calc_Ma_fp(logg, Teff, Z):
 def H_p(T, logg):
     return k_B / mu(T) / m_h * T / 10**logg
 
-def Lambda(T, logg, beta=DEFAULT_BETA):
+def Lambda_beta(T, logg, beta=DEFAULT_BETA):
     return beta * H_p(T, logg)
+
+def Lambda_Tram(T, logg, beta=None):
+    """Calculates granule diameter Lambda via Trampedach+2013 eqn 19.
+    
+    The beta parameter is kept for drop-in compatability with Lambda(),
+    but is not used.
+    """
+    # Note: A_gran is a *diameter*, not an area.
+    log_A_gran = 1.3210 * np.log10(T) - 1.0970 * logg + 0.0306
+    A_gran_Mm = 10**log_A_gran
+    # To cm
+    return 100 * 1e6 * A_gran_Mm
+
+Lambda = Lambda_Tram
     
 def tau_g(T, logg, Z, beta=DEFAULT_BETA):
     rho, kappa = find_rho(T, Z, logg, and_kappa=True) 
@@ -465,8 +479,7 @@ def calc_F8_from_sigma_fp(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
     ν_8 = 1 / (8 * 3600)
     
     w_rms = Ma * c_s(Teff)
-    Lambda = beta * H_p(Teff, logg)
-    τ_eff = Lambda / w_rms
+    τ_eff = Lambda(Teff, logg, beta) / w_rms
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
@@ -477,8 +490,7 @@ def calc_σ_from_F8_fp(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
         Ma = calc_Ma_fp(logg, Teff, Z)
     
     w_rms = Ma * c_s(Teff)
-    Lambda = beta * H_p(Teff, logg)
-    τ_eff = Lambda / w_rms
+    τ_eff = Lambda(Teff, logg, beta) / w_rms
     
     return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
@@ -493,7 +505,7 @@ def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     σ = calc_σ_from_F8_fp(logg, Teff, Z, F8, beta=beta)
     M = M * M_sun_grams
     prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
-    factor = prefix * np.sqrt(tau_g(Teff, logg, Z, beta)) * beta * H_p(Teff, logg) * np.sqrt(10**logg) / np.sqrt(M)
+    factor = prefix * np.sqrt(tau_g(Teff, logg, Z, beta)) * Lambda(Teff, logg, beta) * np.sqrt(10**logg) / np.sqrt(M)
     theta = np.sqrt(σ / factor)
     return theta
 
