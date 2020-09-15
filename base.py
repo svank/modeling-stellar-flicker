@@ -591,7 +591,7 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                     **imshowargs)
     
     if show_x_label:
-        plt.xlabel(r"$T_{eff}$ (K)")
+        plt.xlabel(r"$T_\textrm{eff}$ (K)")
     if show_y_label:
         plt.ylabel("$\log\ g$")
     plt.xlim(plt.xlim()[1], plt.xlim()[0])
