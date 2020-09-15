@@ -25,7 +25,7 @@ m_h = consts.m_p.cgs.value
 G = consts.G.cgs.value
 sigma_sb = consts.sigma_sb.cgs.value
 
-DEFAULT_BETA = 10.8
+DEFAULT_BETA = 8.7
 
 def load_catalog(fname='merged_catalog.npy'):
     return np.load(fname)
