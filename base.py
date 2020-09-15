@@ -207,24 +207,17 @@ def calc_phi_new(Ma):
     return calc_theta_new(Ma) / calc_theta_new(Ma_sun)
 
 def calc_theta_new(Ma):
-    A = 1.71606151
-    B = 16.28330745
-    e2 = 0.05803847
-    return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) ** (1)
+    A = 20.98
+    B = 3.5e6
+    e2 = -0.84
+    s = 5.29
+    return 1 / (A * Ma ** (-2*s) + B * Ma ** (e2)) ** (1/s)
 
 def calc_theta_min(Ma):
-    A = 4.73096075
-    B = 15.95174181
-    e1 = -2.
-    e2 = 0.45593737
-    return 1 / (A * Ma ** (-2) + B * Ma ** (e2))
+    return 0.82 * calc_theta_new(Ma)
    
 def calc_theta_max(Ma):
-    A = 1.25633511
-    B = 14.6845559
-    e1 = -2.
-    e2 = 0.20478565
-    return 1 / (A * Ma ** (-2) + B * Ma ** (e2)) 
+    return 1.27 * calc_theta_new(Ma)
 
 def calc_theta_ratio_to_envelope(theta_emp, Ma):
     bound_lower = calc_theta_min(Ma)
