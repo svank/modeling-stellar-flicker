@@ -214,7 +214,7 @@ def calc_theta_new(Ma):
     return 1 / (A * Ma ** (-2*s) + B * Ma ** (e2)) ** (1/s)
 
 def calc_theta_min(Ma):
-    return 0.82 * calc_theta_new(Ma)
+    return 0.79 * calc_theta_new(Ma)
    
 def calc_theta_max(Ma):
     return 1.27 * calc_theta_new(Ma)
