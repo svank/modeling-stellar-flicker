@@ -450,6 +450,13 @@ def tau_g(T, logg, Z, beta=DEFAULT_BETA):
     rho, kappa = find_rho(T, Z, logg, and_kappa=True) 
     return Lambda(T, logg, beta) * rho * kappa
 
+def tau_eff(Teff, logg, Z, Ma=None, beta=DEFAULT_BETA):
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, Teff, Z)
+    
+    w_rms = Ma * c_s(Teff)
+    return Lambda(Teff, logg, beta) / w_rms
+
 def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     if Ma is None:
         Ma = calc_Ma_fp(logg, T, Z)
@@ -466,24 +473,15 @@ def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
 
 def calc_F8_from_sigma_fp(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
     """Cranmer 2014's Eqn 8"""
-    if Ma is None:
-        Ma = calc_Ma_fp(logg, Teff, Z)
-    
     ν_8 = 1 / (8 * 3600)
-    
-    w_rms = Ma * c_s(Teff)
-    τ_eff = Lambda(Teff, logg, beta) / w_rms
+    τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
 def calc_σ_from_F8_fp(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
     """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
-    if Ma is None:
-        Ma = calc_Ma_fp(logg, Teff, Z)
-    
-    w_rms = Ma * c_s(Teff)
-    τ_eff = Lambda(Teff, logg, beta) / w_rms
+    τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
     return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
