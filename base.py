@@ -19,6 +19,7 @@ T_sun = 5770 # K
 logg_sun = 4.438 # log-cgs units, I suppose
 ν_sun = 3.106e-3 # Hz
 Ma_sun = 0.26 # As given in Cranmer 2014
+              # Used in obsoleted scaling relations, and theta <-> phi
 Z_sun = 0.01696
 R_sun_cm = 6.957e10
 k_B = consts.k_B.cgs.value
@@ -464,7 +465,6 @@ def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     if phi is None:
         theta = calc_theta_new(Ma)
     else:
-        # TODO: Look at this in light of the new Ma function
         theta = phi * calc_theta_new(Ma_sun)
     M = M * M_sun_grams
     prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
