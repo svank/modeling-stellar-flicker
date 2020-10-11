@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from matplotlib import rcParams
 import scipy.optimize
 import scipy.stats
 import astropy.constants as consts
@@ -594,7 +595,12 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                     **imshowargs)
     
     if show_x_label:
-        plt.xlabel(r"$T_\textrm{eff}$ (K)")
+        # textrm looks better, but it's only supported with
+        # rcParams['text.usetex'] = True 
+        if rcParams['text.usetex']:
+            plt.xlabel(r"$T_\textrm{eff}$ (K)")
+        else:
+            plt.xlabel(r"$T_\mathrm{eff}$ (K)")
     if show_y_label:
         plt.ylabel("$\log\ g$")
     plt.xlim(plt.xlim()[1], plt.xlim()[0])
