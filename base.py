@@ -619,5 +619,3 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
 
 catalog = load_catalog()
 
-catalog['F8'] = F8_from_logg(catalog['F8logg'])
-

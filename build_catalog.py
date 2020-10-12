@@ -3,6 +3,33 @@
 import numpy as np
 from progressBar import ProgressBar
 
+def _F8_from_logg(logg):
+    """Calculates F8 flicker values from log(g)
+    Bastien 2016's Eqn 4.
+    
+    log g = 1.3724221 - 3.5002686 x - 1.6838185 x^2 - 0.37909094 x^3
+    x = log10(F8)
+    """
+    # ax^3 + bx^2 + cx + d = 0
+    a = -0.37909094
+    b = -1.6838185
+    c = -3.5002686
+    d =  1.3724221 - logg
+    
+    # Numpy solves for roots generally, computing "the eigenvalues of
+    # the companion matrix"
+    roots = np.roots([a, b, c, d])
+    # Select real root
+    root = roots[np.imag(roots) == 0]
+    root = np.real(root)
+    
+    if root.size != 1:
+        raise RuntimeError("Cubic root is ambiguous")
+    
+    return 10**root
+
+F8_from_logg = np.vectorize(_F8_from_logg)
+
 def build_catalog():
     huber_raw = np.loadtxt("orig_data/Huber_2014.txt", skiprows=49, usecols=range(19))
     
@@ -88,8 +115,7 @@ def build_catalog():
                    ('e_logR+HK', 'float64'),
                    ('Reff', 'float64'),
                    ('e_Reff', 'float64'),
-                   ('has_Z', 'bool_'),
-                   ('myF8', 'float64')])
+                   ('has_Z', 'bool_')])
     catalog['KIC'] = KIC
     catalog['kepmag'] = kepmag
     catalog['F8logg'] = F8logg
@@ -152,6 +178,9 @@ def build_catalog():
         pb.increment()
         pb.display()
     pb.display(True)
+    
+    catalog['F8'] = F8_from_logg(catalog['F8logg'])
+    
     np.save('merged_catalog.npy', catalog)
 
 if __name__ == "__main__":
