@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from progressBar import ProgressBar
 
 def _F8_from_logg(logg):
     """Calculates F8 flicker values from log(g)
@@ -125,7 +124,6 @@ def build_catalog():
     catalog['RMS'] = RMS
     catalog['Teff'] = Teff
     
-    pb = ProgressBar(len(KIC))
     for i, kic in enumerate(KIC):
         h_data = huber[kic]
         catalog['TeffH'][i]   = h_data[1]
@@ -175,10 +173,6 @@ def build_catalog():
             catalog['Reff'][i] = float(z_data[11])
             catalog['e_Reff'][i] = float(z_data[12])
             
-        pb.increment()
-        pb.display()
-    pb.display(True)
-    
     catalog['F8'] = F8_from_logg(catalog['F8logg'])
     
     np.save('merged_catalog.npy', catalog)
