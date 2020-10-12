@@ -9,7 +9,7 @@ import scipy.optimize
 import scipy.stats
 import astropy.constants as consts
 import functools
-from numba import jit
+from numba import njit
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
 
@@ -208,6 +208,7 @@ calc_phi_from_F8_new = calc_Φ_from_F8_new
 def calc_phi_new(Ma):
     return calc_theta_new(Ma) / calc_theta_new(Ma_sun)
 
+@njit
 def calc_theta_new(Ma):
     A = 20.98
     B = 3.5e6
@@ -215,12 +216,15 @@ def calc_theta_new(Ma):
     s = 5.29
     return 1 / (A * Ma ** (-2*s) + B * Ma ** (e2)) ** (1/s)
 
+@njit
 def calc_theta_min(Ma):
     return 0.79 * calc_theta_new(Ma)
    
+@njit
 def calc_theta_max(Ma):
     return 1.27 * calc_theta_new(Ma)
 
+@njit
 def calc_theta_ratio_to_envelope(theta_emp, Ma):
     bound_lower = calc_theta_min(Ma)
     bound_upper = calc_theta_max(Ma)
@@ -232,10 +236,14 @@ def calc_theta_ratio_to_envelope(theta_emp, Ma):
     return out
 
 def _calc_Ma_from_phi(phi):
-    f = lambda Ma: np.abs(calc_phi_new(Ma) - phi)
-    return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 1.5)).x
+    theta = calc_Ma_from_theta(phi * calc_theta_new(Ma_sun))
+    
+def _calc_Ma_from_theta(theta, theta_fcn=calc_theta_new):
+    f = lambda Ma: np.abs(theta_fcn(Ma) - theta)
+    # Bounds are needed, in part, to prevent guesses of 0
+    return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 2)).x
 
-calc_Ma_from_phi = np.vectorize(_calc_Ma_from_phi)
+calc_Ma_from_theta = np.vectorize(_calc_Ma_from_theta)
 
 def old_calc_phi_new(Ma):
     a = 0.15390654
@@ -343,7 +351,7 @@ def load_aesopus():
 
 load_aesopus()
 
-@jit
+@njit
 def _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r):
     """ This is a line of code pulled from _find_rho so that
         it can be cleanly jit-ed. """
