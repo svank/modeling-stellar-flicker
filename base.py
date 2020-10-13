@@ -238,6 +238,8 @@ def _calc_Ma_from_phi(phi):
     theta = calc_Ma_from_theta(phi * calc_theta_new(Ma_sun))
     
 def _calc_Ma_from_theta(theta, theta_fcn=calc_theta_new):
+    if np.isnan(theta):
+        return np.nan
     f = lambda Ma: np.abs(theta_fcn(Ma) - theta)
     # Bounds are needed, in part, to prevent guesses of 0
     return scipy.optimize.minimize_scalar(f, method="Bounded", bounds=(0.01, 2)).x
@@ -360,6 +362,10 @@ def _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r):
          + 10**aesopus_data[z2, t2] * z2r * t2r )
 
 def _find_rho(T_val, Z_val, logg_val, and_kappa=False):
+    if np.isnan(T_val) or np.isnan(Z_val) or np.isnan(logg_val):
+        if and_kappa:
+            return np.nan, np.nan
+        return np.nan
     T_idx = aesopus_T_idx_mapper(T_val)
     t1, t2 = int(np.floor(T_idx)), int(np.ceil(T_idx))
     t1r = 1 - (T_idx - t1)
