@@ -592,7 +592,9 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
                   stat='mean', log_norm=False, show_x_label=True,
                   show_y_label=True, imshowargs=None,
-                  fill_in_bg=True, show_colorbar=True):
+                  stat_in_log_space=False,
+                  fill_in_bg=True, show_colorbar=True,
+                  return_bins=False, cbar_kwargs={}):
     if imshowargs is None:
         imshowargs = {}
     if log_norm:
@@ -600,7 +602,13 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
         vmin = None
         vmax = None
     
+    if stat_in_log_space:
+        quantity = np.log10(quantity)
+    
     stat, r, c, binn = prep_2d_bins(cat, quantity, stat, binsize)    
+    
+    if stat_in_log_space:
+        stat = 10**stat
     
     if fill_in_bg:
         plt.gca().set_facecolor('black')
@@ -624,7 +632,9 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
     plt.xlim(plt.xlim()[1], plt.xlim()[0])
     
     if show_colorbar:
-        plt.colorbar().set_label(label)
+        plt.colorbar(**cbar_kwargs).set_label(label)
+    if return_bins:
+        return stat, r, c, binn
     return im
 
 catalog = load_catalog()
