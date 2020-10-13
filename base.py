@@ -217,7 +217,7 @@ def calc_theta_new(Ma):
 
 @njit
 def calc_theta_min(Ma):
-    return 0.79 * calc_theta_new(Ma)
+    return 0.62 * calc_theta_new(Ma)
    
 @njit
 def calc_theta_max(Ma):
