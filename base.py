@@ -590,7 +590,7 @@ def prep_2d_bins(cat, quantity, stat='mean', binsize=100):
 
 def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                   vmin=None, vmax=None, scale_fcn=lambda x: x,
-                  stat='mean', log_norm=False, show_x_label=True,
+                  stat='median', log_norm=False, show_x_label=True,
                   show_y_label=True, imshowargs=None,
                   stat_in_log_space=False,
                   fill_in_bg=True, show_colorbar=True,
