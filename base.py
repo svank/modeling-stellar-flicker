@@ -87,7 +87,6 @@ def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
         # Clamp Φ at zero
         Φ = 0 * (Φ < 0) + Φ * (Φ >= 0)
     
-    # Why 1.03 power when Samadi has 1.10? See Samadi (2013b) Figure B.1
     # Note Cranmer (2014) used an exponent of 1.03 (see Samadi Figure B.1)
     # Here we use the 1.10 from the main text of Samadi (2013b)
     return 0.039 * ( (Teff / T_sun) ** (3/4)
