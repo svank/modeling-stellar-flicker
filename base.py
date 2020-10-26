@@ -548,16 +548,18 @@ def plot_ZAMS_Teff_logg(**kwargs):
     
     plt.plot(T, np.log10(g), **kwargs)
 
-def outline_data(x=None, y=None, **kwargs):
+def outline_data(x=None, y=None, cat=None, **kwargs):
     """Draws an outline of a set of points.
     
     Accepts two one-dimentional arrays containing the x and y coordinates
     of the data set to be outlined.
     All kwargs are passed to plt.contour"""
+    if cat is None:
+        cat = catalog
     if x is None:
-        x = catalog['TeffH']
+        x = cat['TeffH']
     if y is None:
-        y = catalog['loggH']
+        y = cat['loggH']
     
     H, x_edge, y_edge = np.histogram2d(x, y, bins=100)
     # H needs to be transposed for plt.contour
@@ -567,6 +569,16 @@ def outline_data(x=None, y=None, **kwargs):
     # shape of the z array, so work out the middle of each bin
     x_edge = (x_edge[1:] + x_edge[:-1]) / 2
     y_edge = (y_edge[1:] + y_edge[:-1]) / 2
+    
+    # Pad the arrays
+    H = np.pad(H, 1)
+    dx = x_edge[1] - x_edge[0]
+    x_edge = np.insert(x_edge, 0, x_edge[0] - dx)
+    x_edge = np.append(x_edge, x_edge[-1] + dx)
+    dy = y_edge[1] - y_edge[0]
+    y_edge = np.insert(y_edge, 0, y_edge[0] - dy)
+    y_edge = np.append(y_edge, y_edge[-1] + dy)
+    
     XX, YY = np.meshgrid(x_edge, y_edge)
     
     H[H > 0] = 1
