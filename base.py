@@ -593,7 +593,7 @@ def outline_data(x=None, y=None, cat=None, **kwargs):
     
     plt.contour(XX, YY, H, levels=[0.5], **kwargs)
 
-def prep_2d_bins(cat, quantity, stat='mean', binsize=100):
+def prep_2d_bins(cat, quantity, stat='median', binsize=100):
     stat, r, c, binn = scipy.stats.binned_statistic_2d(
         cat['loggH'], cat['TeffH'], quantity, stat, binsize,
         expand_binnumbers=True,
