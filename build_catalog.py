@@ -30,7 +30,8 @@ def _F8_from_logg(logg):
 F8_from_logg = np.vectorize(_F8_from_logg)
 
 def build_catalog():
-    huber_raw = np.loadtxt("orig_data/Huber_2014.txt", skiprows=49, usecols=range(19))
+    huber_raw = np.genfromtxt("orig_data/berger_2020.txt", skip_header=45,
+            usecols=range(13))
     
     huber = dict()
     for i in range(huber_raw.shape[0]):
@@ -81,6 +82,7 @@ def build_catalog():
                    ('Range', 'float64'),
                    ('RMS', 'float64'),
                    ('Teff', 'float64'),
+                   
                    ('TeffH', 'float64'),
                    ('E_TeffH', 'float64'),
                    ('e_TeffH', 'float64'),
@@ -90,6 +92,11 @@ def build_catalog():
                    ('MH', 'float64'),
                    ('E_MH', 'float64'),
                    ('e_MH', 'float64'),
+                   ('FeHH', 'float64'),
+                   ('E_FeHH', 'float64'),
+                   ('e_FeHH', 'float64'),
+                   ('has_H', 'bool_'),
+                   
                    ('TeffC', 'float64'),
                    ('loggC', 'float64'),
                    ('MC', 'float64'),
@@ -100,14 +107,17 @@ def build_catalog():
                    ('F8_obsC', 'float64'),
                    ('RvarC', 'float64'),
                    ('has_C', 'bool_'),
+                   
                    ('FeH', 'float64'),
                    ('e_FeH', 'float64'),
                    ('has_L', 'bool_'),
+                   
                    ('PRot', 'float64'),
                    ('e_PRot', 'float64'),
                    ('RPer', 'float64'),
                    ('PFlag', 'str_'),
                    ('has_M', 'bool_'),
+                   
                    ('S', 'float64'),
                    ('e_S', 'float64'),
                    ('logR+HK', 'float64'),
@@ -125,16 +135,21 @@ def build_catalog():
     catalog['Teff'] = Teff
     
     for i, kic in enumerate(KIC):
-        h_data = huber[kic]
-        catalog['TeffH'][i]   = h_data[1]
-        catalog['E_TeffH'][i] = h_data[2]
-        catalog['e_TeffH'][i] = h_data[3]
-        catalog['loggH'][i]   = h_data[4]
-        catalog['E_loggH'][i] = h_data[5]
-        catalog['e_loggH'][i] = h_data[6]
-        catalog['MH'][i]      = h_data[13]
-        catalog['E_MH'][i]    = h_data[14]
-        catalog['e_MH'][i]    = h_data[15]
+        if kic in huber:
+            catalog['has_H'][i] = 1
+            h_data = huber[kic]
+            catalog['TeffH'][i]   = h_data[4]
+            catalog['E_TeffH'][i] = h_data[5]
+            catalog['e_TeffH'][i] = h_data[6]
+            catalog['loggH'][i]   = h_data[7]
+            catalog['E_loggH'][i] = h_data[8]
+            catalog['e_loggH'][i] = h_data[9]
+            catalog['MH'][i]      = h_data[1]
+            catalog['E_MH'][i]    = h_data[2]
+            catalog['e_MH'][i]    = h_data[3]
+            catalog['FeHH'][i]    = h_data[10]
+            catalog['E_FeHH'][i]  = h_data[11]
+            catalog['e_FeHH'][i]  = h_data[12]
         
         if kic in cranmer:
             catalog['has_C'][i] = 1

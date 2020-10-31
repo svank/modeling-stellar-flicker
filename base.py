@@ -597,7 +597,7 @@ def prep_2d_bins(cat, quantity, stat='median', binsize=100):
     stat, r, c, binn = scipy.stats.binned_statistic_2d(
         cat['loggH'], cat['TeffH'], quantity, stat, binsize,
         expand_binnumbers=True,
-        range=[[2.5, cat['loggH'].max()], [cat['TeffH'].min(), cat['TeffH'].max()]])
+        range=[[2.5, cat['loggH'].max()], [4500, 7500]])
     return stat, r, c, binn
 
 def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
@@ -650,4 +650,4 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
     return im
 
 catalog = load_catalog()
-
+catalog = catalog[catalog['has_H']]
