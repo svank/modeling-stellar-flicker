@@ -649,5 +649,5 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
         return stat, r, c, binn
     return im
 
-catalog = load_catalog()
-catalog = catalog[catalog['has_H']]
+raw_catalog = load_catalog()
+catalog = raw_catalog[raw_catalog['has_H']]
