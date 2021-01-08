@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import rcParams
+import scipy.ndimage
 import scipy.optimize
 import scipy.stats
 import astropy.constants as consts
@@ -548,7 +549,7 @@ def plot_ZAMS_Teff_logg(**kwargs):
     
     plt.plot(T, np.log10(g), **kwargs)
 
-def outline_data(x=None, y=None, cat=None, **kwargs):
+def outline_data(x=None, y=None, cat=None, smooth=True, **kwargs):
     """Draws an outline of a set of points.
     
     Accepts two one-dimentional arrays containing the x and y coordinates
@@ -570,6 +571,11 @@ def outline_data(x=None, y=None, cat=None, **kwargs):
     x_edge = (x_edge[1:] + x_edge[:-1]) / 2
     y_edge = (y_edge[1:] + y_edge[:-1]) / 2
     
+    H = H.astype(bool)
+    if smooth:
+        # This needs to happen before the padding is added
+        H = ~scipy.ndimage.binary_fill_holes(~H)
+    
     # Pad the arrays
     H = np.pad(H, 1)
     dx = x_edge[1] - x_edge[0]
@@ -579,9 +585,13 @@ def outline_data(x=None, y=None, cat=None, **kwargs):
     y_edge = np.insert(y_edge, 0, y_edge[0] - dy)
     y_edge = np.append(y_edge, y_edge[-1] + dy)
     
-    XX, YY = np.meshgrid(x_edge, y_edge)
+    if smooth:
+        # This needs to happen after the padding is added
+        H = scipy.ndimage.binary_fill_holes(H)
+        
+        H = scipy.ndimage.binary_opening(H, iterations=1)
     
-    H[H > 0] = 1
+    XX, YY = np.meshgrid(x_edge, y_edge)
     
     # Fill in some default plot args if not given
     if "alpha" not in kwargs:
