@@ -616,7 +616,8 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                   show_y_label=True, imshowargs=None,
                   stat_in_log_space=False,
                   fill_in_bg=True, show_colorbar=True,
-                  return_bins=False, cbar_kwargs={}):
+                  return_bins=False, return_cbar=False,
+                  cbar_kwargs={}):
     if imshowargs is None:
         imshowargs = {}
     if log_norm:
@@ -654,7 +655,10 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
     plt.xlim(plt.xlim()[1], plt.xlim()[0])
     
     if show_colorbar:
-        plt.colorbar(**cbar_kwargs).set_label(label)
+        cb = plt.colorbar(**cbar_kwargs)
+        cb.set_label(label)
+        if return_cbar:
+            return cb
     if return_bins:
         return stat, r, c, binn
     return im
