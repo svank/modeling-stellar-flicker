@@ -259,30 +259,6 @@ def calc_F8_new(logg, Teff, M, Z, phi=None, Ma=None):
     σ = calc_σ_new(Teff, M, logg, Z, Φ=phi)
     return calc_F8_from_σ_new(logg, Teff, Z, σ, Ma)
 
-def calc_F8_max(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8_new):
-    if Ma is None:
-        Ma = calc_Ma_new(logg, Teff, Z)
-    phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
-    return F8_fcn(logg, Teff, M, Z, phi, Ma)
-
-def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8_new):
-    if Ma is None:
-        Ma = calc_Ma_new(logg, Teff, Z)
-    phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
-    return F8_fcn(logg, Teff, M, Z, phi, Ma)
-
-def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8_new):
-    if Ma is None:
-        Ma = calc_Ma_new(logg, Teff, Z) * Ma_mult
-    bound_lower = calc_F8_min(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
-    bound_upper = calc_F8_max(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
-    ratio_lower = F8_emp / bound_lower
-    ratio_upper = F8_emp / bound_upper
-    out = np.ones_like(ratio_lower)
-    out[F8_emp < bound_lower] = ratio_lower[F8_emp < bound_lower]
-    out[F8_emp > bound_upper] = ratio_upper[F8_emp > bound_upper]
-    return out
-
 def calc_σ_new(Teff, M, logg, Z, Φ=None):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
     Cranmer 2014's Eqn 1
@@ -520,6 +496,30 @@ def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     factor = prefix * np.sqrt(tau_g(Teff, logg, Z, beta)) * Lambda(Teff, logg, beta) * np.sqrt(10**logg) / np.sqrt(M)
     theta = np.sqrt(σ / factor)
     return theta
+
+def calc_F8_max(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8_fp):
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, Teff, Z)
+    phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
+    return F8_fcn(logg, Teff, M, Z, phi, Ma)
+
+def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8_fp):
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, Teff, Z)
+    phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
+    return F8_fcn(logg, Teff, M, Z, phi, Ma)
+
+def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8_fp):
+    if Ma is None:
+        Ma = calc_Ma_fp(logg, Teff, Z) * Ma_mult
+    bound_lower = calc_F8_min(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
+    bound_upper = calc_F8_max(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
+    ratio_lower = F8_emp / bound_lower
+    ratio_upper = F8_emp / bound_upper
+    out = np.ones_like(ratio_lower)
+    out[F8_emp < bound_lower] = ratio_lower[F8_emp < bound_lower]
+    out[F8_emp > bound_upper] = ratio_upper[F8_emp > bound_upper]
+    return out
 
 
 
