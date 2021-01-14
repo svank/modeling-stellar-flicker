@@ -419,7 +419,10 @@ def calc_convective_turnover_time(Teff):
     return 0.002 + 314.24 * np.exp(-(Teff/1952.5) - (Teff/6250)**18)
 
 def calc_bandpass_correction(Teff, logg):
-    """Returns a factor that converts bolometric flicker to Kepler flicker"""
+    """Returns a factor that converts bolometric flicker to Kepler flicker.
+    
+    That is, this quantity should multiply model predictions or divide observed
+    F8 to put prediction and observation on the same footing"""
     T_src, logg_src, sig_mult_src = np.genfromtxt("orig_data/bandpass_adjustment.txt", skip_header=4, unpack=True)
     sig_mult = scipy.interpolate.griddata((T_src, logg_src), sig_mult_src, (Teff, logg), 'linear')
     return sig_mult
@@ -500,9 +503,12 @@ def calc_σ_from_F8_fp(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
     
     return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
-def calc_F8_fp(logg, T, M, Z, phi=None, Ma=None, beta=DEFAULT_BETA):
+def calc_F8_fp(logg, T, M, Z, phi=None, Ma=None, bp_cor=True, beta=DEFAULT_BETA):
     sigma = calc_sigma_fp(T, M, logg, Z, phi=phi, Ma=Ma, beta=beta)
-    return calc_F8_from_sigma_fp(logg, T, Z, sigma, Ma=Ma, beta=beta)
+    F8 = calc_F8_from_sigma_fp(logg, T, Z, sigma, Ma=Ma, beta=beta)
+    if bp_cor:
+        F8 *= calc_bandpass_correction(T, logg)
+    return F8
 
 def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     # F8 is expected in units of ppt
