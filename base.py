@@ -74,16 +74,16 @@ def F8_to_logg(F8):
     x = np.log10(F8)
     return a * x**3 + b * x**2 + c * x + d
 
-def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
+def calc_σ_old(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
     Cranmer 2014's Eqn 1
     """
     ν_max = calc_ν_max(logg, Teff)
     if Φ is None:
-        Ma = calc_Ma(logg, Teff)
+        Ma = calc_Ma_old(logg, Teff)
         Ma *= S
         
-        Φ = calc_Φ(Ma)
+        Φ = calc_Φ_old(Ma)
         
         # Clamp Φ at zero
         Φ = 0 * (Φ < 0) + Φ * (Φ >= 0)
@@ -95,7 +95,7 @@ def calc_σ(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
                      * Φ**2 )**override_exponent
 
 def calc_σ_cranmer_2014(Teff, M, logg, S=1, Φ=None):
-    return calc_σ(Teff, M, logg, S, Φ, override_exponent=1.03)
+    return calc_σ_old(Teff, M, logg, S, Φ, override_exponent=1.03)
 
 def calc_ν_max(logg, Teff):
     """Calculates peak p-mode frequency
@@ -103,16 +103,16 @@ def calc_ν_max(logg, Teff):
     """
     return ν_sun * 10**logg / 10**logg_sun * (T_sun / Teff)**0.5
 
-def calc_Ma(logg, Teff):
+def calc_Ma_old(logg, Teff):
     """Calculates Mach number
     Cranmer 2014's Eqn 3
     """
     return 0.26 * (Teff / T_sun)**2.35 * (10**logg_sun / 10**logg) ** 0.152
 
-def calc_phi(*args, **kwargs):
-    return calc_Φ(*args, **kwargs)
+def calc_phi_old(*args, **kwargs):
+    return calc_Φ_old(*args, **kwargs)
 
-def calc_Φ(Ma, make_monotonic=True):
+def calc_Φ_old(Ma, make_monotonic=True):
     """Calculates the temperature fluctuation amplitude
     Cranmer 2014's Eqn 4
     """
@@ -128,19 +128,19 @@ def calc_Φ(Ma, make_monotonic=True):
     return ((make_monotonic * Ma > (-B/2/A)) * max_val
             + ((not make_monotonic) or Ma <= (-B/2/A)) * quadratic_val)
 
-def calc_F8_from_σ(logg, Teff, σ, S=1):
+def calc_F8_from_σ_old(logg, Teff, σ, S=1):
     """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
     ν_max = calc_ν_max(logg, Teff)
-    Ma = calc_Ma(logg, Teff) * S
+    Ma = calc_Ma_old(logg, Teff) * S
     
     τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
-def calc_F8(logg, Teff, M, S=1, Φ=None):
-    σ = calc_σ(Teff, M, logg, S, Φ)
-    return calc_F8_from_σ(logg, Teff, σ, S)
+def calc_F8_old(logg, Teff, M, S=1, Φ=None):
+    σ = calc_σ_old(Teff, M, logg, S, Φ)
+    return calc_F8_from_σ_old(logg, Teff, σ, S)
 
 def calc_cranmer_S(Teff):
     value = 1 / (1 + (Teff - 5400) / 1500)
@@ -156,14 +156,14 @@ def fit_S(logg_arr, Teff_arr, M_arr, F8obs_arr, max_S=2, too_large_fill=0):
         F8obs = F8obs_arr[i]
         
         # The objective function to be minimized
-        obj = lambda S: calc_F8(logg, Teff, M, S) - F8obs
+        obj = lambda S: calc_F8_old(logg, Teff, M, S) - F8obs
         
         try:
             S[i] = scipy.optimize.newton(obj, x0=calc_cranmer_S(Teff))
         except:
             S[i] = float('nan')
             #s0 = calc_cranmer_S(Teff)
-            #print(i, s0, calc_F8(logg, Teff, M, s0), calc_F8(logg, Teff, M, 1), F8obs)
+            #print(i, s0, calc_F8_old(logg, Teff, M, s0), calc_F8_old(logg, Teff, M, 1), F8obs)
     
     # Set values >= max to fill value
     S[S > max_S] = too_large_fill
@@ -179,7 +179,7 @@ def fit_Φ(logg_arr, Teff_arr, M_arr, F8obs_arr):
         F8obs = F8obs_arr[i]
         
         # The objective function to be minimized
-        obj = lambda Φ: calc_F8(logg, Teff, M, Φ=Φ) - F8obs
+        obj = lambda Φ: calc_F8_old(logg, Teff, M, Φ=Φ) - F8obs
         
         try:
             Φ[i] = scipy.optimize.newton(obj, x0=1)
