@@ -414,7 +414,7 @@ mu = lambda Teff: 7/4 + .5 * np.tanh((3500-Teff)/600)
 
 c_s = lambda Teff: np.sqrt((5/3) * k_B * Teff / mu(Teff) / m_h)
 
-def calc_Ma_fp(logg, Teff, Z):
+def calc_Ma(logg, Teff, Z):
     C = 6.086e-4 * Teff**1.406 * (10**logg)**-0.157 * (10**Z_to_FeH(Z))**0.098
     rho = find_rho(Teff, Z, logg)
     v = (sigma_sb * Teff**4 / (C * rho)) ** (1/3)
@@ -447,14 +447,14 @@ def tau_g(T, logg, Z, beta=DEFAULT_BETA):
 
 def tau_eff(Teff, logg, Z, Ma=None, beta=DEFAULT_BETA):
     if Ma is None:
-        Ma = calc_Ma_fp(logg, Teff, Z)
+        Ma = calc_Ma(logg, Teff, Z)
     
     w_rms = Ma * c_s(Teff)
     return Lambda(Teff, logg, beta) / w_rms
 
-def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
+def calc_sigma(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     if Ma is None:
-        Ma = calc_Ma_fp(logg, T, Z)
+        Ma = calc_Ma(logg, T, Z)
     if phi is None:
         theta = calc_theta_new(Ma)
     else:
@@ -465,53 +465,53 @@ def calc_sigma_fp(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     # Return in units of ppt
     return sigma * 1000
 
-def calc_F8_from_sigma_fp(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
+def calc_F8_from_sigma(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
     """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
     τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
-def calc_σ_from_F8_fp(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
+def calc_σ_from_F8(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
     """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
     τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
     return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
-def calc_F8_fp(logg, T, M, Z, phi=None, Ma=None, bp_cor=True, beta=DEFAULT_BETA):
-    sigma = calc_sigma_fp(T, M, logg, Z, phi=phi, Ma=Ma, beta=beta)
-    F8 = calc_F8_from_sigma_fp(logg, T, Z, sigma, Ma=Ma, beta=beta)
+def calc_F8(logg, T, M, Z, phi=None, Ma=None, bp_cor=True, beta=DEFAULT_BETA):
+    sigma = calc_sigma(T, M, logg, Z, phi=phi, Ma=Ma, beta=beta)
+    F8 = calc_F8_from_sigma(logg, T, Z, sigma, Ma=Ma, beta=beta)
     if bp_cor:
         F8 *= calc_bandpass_correction(T, logg)
     return F8
 
-def calc_theta_from_F8_fp(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
+def calc_theta_from_F8(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     # F8 is expected in units of ppt
     F8 = F8 / 1000
     
-    σ = calc_σ_from_F8_fp(logg, Teff, Z, F8, beta=beta)
+    σ = calc_σ_from_F8(logg, Teff, Z, F8, beta=beta)
     M = M * M_sun_grams
     prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
     factor = prefix * np.sqrt(tau_g(Teff, logg, Z, beta)) * Lambda(Teff, logg, beta) * np.sqrt(10**logg) / np.sqrt(M)
     theta = np.sqrt(σ / factor)
     return theta
 
-def calc_F8_max(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8_fp):
+def calc_F8_max(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
     if Ma is None:
-        Ma = calc_Ma_fp(logg, Teff, Z)
+        Ma = calc_Ma(logg, Teff, Z)
     phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
-def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8_fp):
+def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
     if Ma is None:
-        Ma = calc_Ma_fp(logg, Teff, Z)
+        Ma = calc_Ma(logg, Teff, Z)
     phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
-def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8_fp):
+def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8):
     if Ma is None:
-        Ma = calc_Ma_fp(logg, Teff, Z) * Ma_mult
+        Ma = calc_Ma(logg, Teff, Z) * Ma_mult
     bound_lower = calc_F8_min(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
     bound_upper = calc_F8_max(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
     ratio_lower = F8_emp / bound_lower
