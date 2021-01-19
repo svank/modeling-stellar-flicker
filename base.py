@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 
-import numpy as np
+import astropy.constants as consts
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 from matplotlib import rcParams
+from matplotlib.colors import LogNorm
+from numba import njit
+import numpy as np
 import scipy.ndimage
 import scipy.optimize
 import scipy.stats
-import astropy.constants as consts
+
 import functools
-from numba import njit
+import warnings
+
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
 
 M_sun = 1 # Solar masses
 M_sun_grams = 1.998e33
 T_sun = 5770 # K
-logg_sun = 4.438 # log-cgs units, I suppose
+logg_sun = 4.438 # log-cgs units
 ν_sun = 3.106e-3 # Hz
 Ma_sun = 0.26 # As given in Cranmer 2014
               # Used in obsoleted scaling relations, and theta <-> phi
@@ -28,7 +31,16 @@ m_h = consts.m_p.cgs.value
 G = consts.G.cgs.value
 sigma_sb = consts.sigma_sb.cgs.value
 
+# n.b. this is no longer in use anywhere by default
 DEFAULT_BETA = 8.7
+
+# Note: see comments in build_catalog.py for documentation of the catalog format
+
+
+
+# ---- General-purpose functions ----
+
+
 
 def load_catalog(fname='merged_catalog.npy'):
     return np.load(fname)
@@ -74,6 +86,12 @@ def F8_to_logg(F8):
     x = np.log10(F8)
     return a * x**3 + b * x**2 + c * x + d
 
+
+
+# ---- Functions implementing the "old" (Cranmer+2014) model
+
+
+
 def calc_σ_old(Teff, M, logg, S=1, Φ=None, override_exponent=1.1):
     """Calculates RMS amplitude σ of photospheric continuum intensity variations
     Cranmer 2014's Eqn 1
@@ -109,9 +127,6 @@ def calc_Ma_old(logg, Teff):
     """
     return 0.26 * (Teff / T_sun)**2.35 * (10**logg_sun / 10**logg) ** 0.152
 
-def calc_phi_old(*args, **kwargs):
-    return calc_Φ_old(*args, **kwargs)
-
 def calc_Φ_old(Ma, make_monotonic=True):
     """Calculates the temperature fluctuation amplitude
     Cranmer 2014's Eqn 4
@@ -127,6 +142,11 @@ def calc_Φ_old(Ma, make_monotonic=True):
     # clamp to the maximal Φ instead
     return ((make_monotonic * Ma > (-B/2/A)) * max_val
             + ((not make_monotonic) or Ma <= (-B/2/A)) * quadratic_val)
+
+def calc_phi_old(*args, **kwargs):
+    """Turns out putting unicode in your function names makes them hard to type
+    """
+    return calc_Φ_old(*args, **kwargs)
 
 def calc_F8_from_σ_old(logg, Teff, σ, S=1):
     """Cranmer 2014's Eqn 8"""
@@ -189,27 +209,28 @@ def fit_Φ(logg_arr, Teff_arr, M_arr, F8obs_arr):
     return Φ
 
 def calc_N_gran(R, Teff, logg):
+    """Note this uses the old Lambda, not our updated scaling"""
     Lambda = (Teff / T_sun) / (10**logg / 10**logg_sun) * 1e8 # gran size, cm
     return 2 * np.pi * R**2 / Lambda**2
 
 
 
-# ---- New Versions ----
+# ---- Intermediary Versions ----
+# These functions include only some of our model updates.
+# Some have not been updated since and are still part of The Model,
+# whereas others are kept here for my own backwards compatability with past
+# notebooks, and not recommended for any other use.
 
 
-
-def calc_Φ_from_F8_new(F8, logg, Teff, M, Z):
-    σ = calc_σ_from_F8_new(logg, Teff, Z, F8)
-    ν_max = calc_ν_max(logg, Teff)
-    factor = (Teff / T_sun) ** (3/4) * (M_sun * ν_sun / M / ν_max) ** (1/2)
-    return ( (σ / 0.039)**(1/1.10) / factor ) ** 0.5
-calc_phi_from_F8_new = calc_Φ_from_F8_new
+# These functions are still "live" and in use:
 
 def calc_phi_new(Ma):
+    # Phi is just Theta / Theta_sun
     return calc_theta_new(Ma) / calc_theta_new(Ma_sun)
 
 @njit
 def calc_theta_new(Ma):
+    # As determined by our fit
     A = 20.98
     B = 3.5e6
     e2 = -0.84
@@ -218,14 +239,23 @@ def calc_theta_new(Ma):
 
 @njit
 def calc_theta_min(Ma):
+    """Calculates the minimum possible Theta according to the envelope"""
+    # As determined by our fit
     return 0.62 * calc_theta_new(Ma)
    
 @njit
 def calc_theta_max(Ma):
+    """Calculates the maximum possible Theta according to the envelope"""
+    # As determined by our fit
     return 1.27 * calc_theta_new(Ma)
 
 @njit
 def calc_theta_ratio_to_envelope(theta_emp, Ma):
+    # Takes in empirical Thetas---that is, a Theta backed out of the model given
+    # an observational F8. Returns 1 if that empirical Theta is within the range
+    # of the Theta values given by our envelope fit, given a model-predicted
+    # Mach number. Otherwise returns the ratio of the empirical Theta to the
+    # nearest edge of the envelope range.
     bound_lower = calc_theta_min(Ma)
     bound_upper = calc_theta_max(Ma)
     ratio_lower = theta_emp / bound_lower
@@ -239,6 +269,8 @@ def _calc_Ma_from_phi(phi):
     theta = calc_Ma_from_theta(phi * calc_theta_new(Ma_sun))
     
 def _calc_Ma_from_theta(theta, theta_fcn=calc_theta_new):
+    """Numerically inverts the Theta-Ma relation and finds
+    a Ma for a given Theta"""
     if np.isnan(theta):
         return np.nan
     f = lambda Ma: np.abs(theta_fcn(Ma) - theta)
@@ -247,77 +279,28 @@ def _calc_Ma_from_theta(theta, theta_fcn=calc_theta_new):
 
 calc_Ma_from_theta = np.vectorize(_calc_Ma_from_theta)
 
-def old_calc_phi_new(Ma):
-    a = 0.15390654
-    b = 0.08877965
-    M0 = 0.32299999
-    
-    phi0 = a*M0**2 + b*M0
-    return (a*Ma**2 + b*Ma) * (Ma < M0) + phi0 * (Ma >= M0)
-
-def calc_F8_new(logg, Teff, M, Z, phi=None, Ma=None):
-    σ = calc_σ_new(Teff, M, logg, Z, Φ=phi)
-    return calc_F8_from_σ_new(logg, Teff, Z, σ, Ma)
-
-def calc_σ_new(Teff, M, logg, Z, Φ=None):
-    """Calculates RMS amplitude σ of photospheric continuum intensity variations
-    Cranmer 2014's Eqn 1
-    """
-    ν_max = calc_ν_max(logg, Teff)
-    if Φ is None:
-        Ma = calc_Ma_new(logg, Teff, Z)
-        Φ = calc_phi_new(Ma)
-    
-    # Steve had a power of 1.03, drawing from Samadi's appendix. But that
-    # exponent doesn't actually apply to this equation, so return to Samadi's
-    # 1.10
-    return 0.039 * ( (Teff / T_sun) ** (3/4)
-                     * (M_sun * ν_sun / M / ν_max) ** (1/2)
-                     * Φ ** 2)**1.10
-
-def calc_F8_from_σ_new(logg, Teff, Z, σ, Ma=None):
-    """Cranmer 2014's Eqn 8"""
-    ν_8 = 1 / (8 * 3600)
-    ν_max = calc_ν_max(logg, Teff)
-    if Ma is None:
-        Ma = calc_Ma_new(logg, Teff, Z)
-    
-    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
-    
-    return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
-
-def calc_σ_from_F8_new(logg, Teff, Z, F8):
-    """Cranmer 2014's Eqn 8"""
-    ν_8 = 1 / (8 * 3600)
-    ν_max = calc_ν_max(logg, Teff)
-    Ma = calc_Ma_new(logg, Teff, Z)
-    
-    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
-    
-    return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
-
-def calc_Ma_new(logg, Teff, Z):
-    rho = find_rho(Teff, Z, logg)
-    return Ma_sun * (Teff / T_sun) ** (5/6) * (rho / rho_sun) ** (-1/3)
-
 aesopus_data = None
 
 def load_aesopus():
+    # Loads the Aesopus data and injects it into the global namespace.
+    # The data is a bit heavy, so having this code function-ified allows it to be
+    # disabled if desired.
     global aesopus_R_vals, aesopus_data
     global aesopus_T_idx_mapper, aesopus_Z_idx_mapper
     from pathlib import Path
     
+    # Load the data
     files = list(Path("orig_data/aesopus/").glob("Z*"))
     aesopus_data = np.zeros((len(files), 67, 91))
     aesopus_Z_vals = np.zeros(len(files))
     aesopus_R_vals = 10**np.arange(-8, 1.01, .1)
     for i, f in enumerate(sorted(files)):
         aesopus_Z_vals[i] = str(f).split("Z")[1]
-        # print(f, aesopus_Z_vals[i])
         d = np.genfromtxt(f, skip_header=329)
         aesopus_T_vals = 10**d[:, 0]
         aesopus_data[i] = d[:, 1:] 
     
+    # Prep interpolation functions
     import scipy.interpolate
     aesopus_T_idx_mapper = scipy.interpolate.interp1d(aesopus_T_vals, np.arange(aesopus_T_vals.size), kind='linear')
     aesopus_Z_idx_mapper = scipy.interpolate.interp1d(aesopus_Z_vals, np.arange(aesopus_Z_vals.size), kind='linear') 
@@ -333,41 +316,45 @@ load_aesopus()
 def _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r):
     """ This is a line of code pulled from _find_rho so that
         it can be cleanly jit-ed. """
-    return (  10**aesopus_data[z1, t1] * z1r * t1r
-         + 10**aesopus_data[z1, t2] * z1r * t2r
-         + 10**aesopus_data[z2, t1] * z2r * t1r
-         + 10**aesopus_data[z2, t2] * z2r * t2r )
+    return ( 10**aesopus_data[z1, t1] * z1r * t1r
+           + 10**aesopus_data[z1, t2] * z1r * t2r
+           + 10**aesopus_data[z2, t1] * z2r * t1r
+           + 10**aesopus_data[z2, t2] * z2r * t2r )
 
 def _find_rho(T_val, Z_val, logg_val, and_kappa=False):
     if np.isnan(T_val) or np.isnan(Z_val) or np.isnan(logg_val):
         if and_kappa:
             return np.nan, np.nan
         return np.nan
+    # Find the indices of the two nearest T values
     T_idx = aesopus_T_idx_mapper(T_val)
     t1, t2 = int(np.floor(T_idx)), int(np.ceil(T_idx))
+    # Find the distance (in index-space) to each of those nearest T values
     t1r = 1 - (T_idx - t1)
     t2r = 1 - t1r
-
+    
+    # Likewise for Z
     Z_idx = aesopus_Z_idx_mapper(Z_val)
     z1, z2 = int(np.floor(Z_idx)), int(np.ceil(Z_idx))
     z1r = 1 - (Z_idx - z1)
     z2r = 1 - z1r
-
+    
     κ = _aesopus_interpolate(z1, z2, t1, t2, z1r, z2r, t1r, t2r)
     ρ = aesopus_R_vals * (1e-6 * T_val)**3
-
+    
     μ = 7/4 + .5 * np.tanh( (3500-T_val) / 600)
     H = k_B * T_val / μ / m_h / 10**logg_val
-
+    
     τ = κ * ρ * H
-
+    
     # This version doesn't extrapolate
     #ρ_idx = np.interp(2/3, τ, np.arange(τ.size))
     ρ_val = np.interp(2/3, τ, ρ, left=np.nan, right=np.nan)
-
+    
+    # This version extrapolates
     #ρ_idx = scipy.interpolate.interp1d(τ, np.arange(τ.size), kind='linear', fill_value="extrapolate")(2/3)
     #ρ_val = scipy.interpolate.interp1d(τ, ρ, kind='linear', fill_value="extrapolate")(2/3)
-
+    
     if and_kappa:
         #κ_idx = scipy.interpolate.interp1d(τ, np.arange(κ.size), kind='linear', fill_value="extrapolate")(2/3)
         #κ_val = scipy.interpolate.interp1d(τ, κ, kind='linear', fill_value="extrapolate")(2/3)
@@ -405,8 +392,85 @@ def calc_bandpass_correction(Teff, logg):
 
 
 
-# -----------------
-# "First-principles" (or at least sort-of) implementation
+# These functions are no longer in use:
+
+
+
+def calc_Φ_from_F8_new(F8, logg, Teff, M, Z):
+    warnings.warn("calc_Φ_from_F8_new is obsolete")
+    σ = calc_σ_from_F8_new(logg, Teff, Z, F8)
+    ν_max = calc_ν_max(logg, Teff)
+    factor = (Teff / T_sun) ** (3/4) * (M_sun * ν_sun / M / ν_max) ** (1/2)
+    return ( (σ / 0.039)**(1/1.10) / factor ) ** 0.5
+calc_phi_from_F8_new = calc_Φ_from_F8_new
+
+def old_calc_phi_new(Ma):
+    warnings.warn("old_calc_phi_new is obsolete")
+    a = 0.15390654
+    b = 0.08877965
+    M0 = 0.32299999
+    
+    phi0 = a*M0**2 + b*M0
+    return (a*Ma**2 + b*Ma) * (Ma < M0) + phi0 * (Ma >= M0)
+
+def calc_F8_new(logg, Teff, M, Z, phi=None, Ma=None):
+    warnings.warn("calc_F8_new is obsolete")
+    σ = calc_σ_new(Teff, M, logg, Z, Φ=phi)
+    return calc_F8_from_σ_new(logg, Teff, Z, σ, Ma)
+
+def calc_σ_new(Teff, M, logg, Z, Φ=None):
+    """Calculates RMS amplitude σ of photospheric continuum intensity variations
+    Cranmer 2014's Eqn 1
+    """
+    warnings.warn("calc_σ_new is obsolete")
+    ν_max = calc_ν_max(logg, Teff)
+    if Φ is None:
+        Ma = calc_Ma_new(logg, Teff, Z)
+        Φ = calc_phi_new(Ma)
+    
+    # Steve had a power of 1.03, drawing from Samadi's appendix. But that
+    # exponent doesn't actually apply to this equation, so return to Samadi's
+    # 1.10
+    return 0.039 * ( (Teff / T_sun) ** (3/4)
+                     * (M_sun * ν_sun / M / ν_max) ** (1/2)
+                     * Φ ** 2)**1.10
+
+def calc_F8_from_σ_new(logg, Teff, Z, σ, Ma=None):
+    """Cranmer 2014's Eqn 8"""
+    warnings.warn("calc_F8_from_σ_new is obsolete")
+    ν_8 = 1 / (8 * 3600)
+    ν_max = calc_ν_max(logg, Teff)
+    if Ma is None:
+        Ma = calc_Ma_new(logg, Teff, Z)
+    
+    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
+    
+    return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
+
+def calc_σ_from_F8_new(logg, Teff, Z, F8):
+    """Cranmer 2014's Eqn 8"""
+    warnings.warn("calc_σ_from_F8_new is obsolete")
+    ν_8 = 1 / (8 * 3600)
+    ν_max = calc_ν_max(logg, Teff)
+    Ma = calc_Ma_new(logg, Teff, Z)
+    
+    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
+    
+    return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
+
+def calc_Ma_new(logg, Teff, Z):
+    warnings.warn("calc_Ma_new is obsolete")
+    rho = find_rho(Teff, Z, logg)
+    return Ma_sun * (Teff / T_sun) ** (5/6) * (rho / rho_sun) ** (-1/3)
+
+
+
+# ---- And now, finally, the code implementing our final model! ----
+# Note that the use of the beta parameter has since been excised, and so any
+# values given are ignored, but beta still appears throughout these functions,
+# (a) for some backwards compatability with my notebooks, and (b) to facilitate
+# quick comparisons of with and without the use of beta by swapping in the
+# beta-containing Lambda function.
 
 
 
@@ -439,6 +503,8 @@ def Lambda_Tram(T, logg, beta=None):
     # To cm
     return 100 * 1e6 * A_gran_Mm
 
+# n.b. For a quick hack to use the beta-based Lambda in calculations, just do
+# `base.Lambda = base.Lambda_beta`. To undo, use `base.Lambda = base.Lambda_Tram`
 Lambda = Lambda_Tram
     
 def tau_g(T, logg, Z, beta=DEFAULT_BETA):
@@ -466,14 +532,12 @@ def calc_sigma(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     return sigma * 1000
 
 def calc_F8_from_sigma(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
-    """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
     τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
 def calc_σ_from_F8(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
-    """Cranmer 2014's Eqn 8"""
     ν_8 = 1 / (8 * 3600)
     τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
@@ -498,18 +562,24 @@ def calc_theta_from_F8(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
     return theta
 
 def calc_F8_max(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
+    """Calculates the maximum possible F8 according to the envelope"""
     if Ma is None:
         Ma = calc_Ma(logg, Teff, Z)
     phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
 def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
+    """Calculates the minimum possible F8 according to the envelope"""
     if Ma is None:
         Ma = calc_Ma(logg, Teff, Z)
     phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
 def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8):
+    # Takes in observational F8s.  Returns 1 if that F8 is within the range of
+    # the F8 values given by our envelope fit, given a model-predicted Mach
+    # number. Otherwise returns the ratio of the empirical F8 to the nearest
+    # edge of the envelope range.
     if Ma is None:
         Ma = calc_Ma(logg, Teff, Z) * Ma_mult
     bound_lower = calc_F8_min(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
@@ -523,11 +593,12 @@ def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, M
 
 
 
-# -----------------
+# ---- Plotting-oriented utility functions ----
 
 
 
 def plot_outline(newer_version=True):
+    """Plots the outline of Cranmer+2014 Figure 4"""
     x = np.linspace(.015, .34, 100)
     
     if newer_version:
@@ -544,6 +615,7 @@ def plot_outline(newer_version=True):
     plt.gca().invert_yaxis()
     
 def plot_ZAMS_Teff_logg(**kwargs):
+    """Plots a zero-age main sequence"""
     M, R, L, T, T_core, rho_core = np.genfromtxt(
             "orig_data/zams_star_properties.dat.txt",
             skip_header=10, unpack=True)
@@ -556,11 +628,13 @@ def plot_ZAMS_Teff_logg(**kwargs):
     plt.plot(T, np.log10(g), **kwargs)
 
 def outline_data(x=None, y=None, cat=None, smooth=True, **kwargs):
-    """Draws an outline of a set of points.
+    """Draws an outline of a set of points---by default, our stars in (T, logg)
     
     Accepts two one-dimentional arrays containing the x and y coordinates
     of the data set to be outlined.
-    All kwargs are passed to plt.contour"""
+    All kwargs are passed to plt.contour
+    
+    Smoothing will attempt to fill in holes, trim fuzz, and remove islands"""
     if cat is None:
         cat = catalog
     if x is None:
@@ -610,6 +684,7 @@ def outline_data(x=None, y=None, cat=None, smooth=True, **kwargs):
     plt.contour(XX, YY, H, levels=[0.5], **kwargs)
 
 def prep_2d_bins(cat, quantity, stat='median', binsize=100):
+    """Utility function for plot_quasi_hi"""
     stat, r, c, binn = scipy.stats.binned_statistic_2d(
         cat['loggH'], cat['TeffH'], quantity, stat, binsize,
         expand_binnumbers=True,
@@ -624,6 +699,11 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                   fill_in_bg=True, show_colorbar=True,
                   return_bins=False, return_cbar=False,
                   cbar_kwargs={}):
+    """Plots a 2D histogram of a quantity in (T, logg) space, with axes flipped
+    for HR-alike display.
+    
+    The arguments have largely been added over time to support specific use
+    cases."""
     if imshowargs is None:
         imshowargs = {}
     if log_norm:

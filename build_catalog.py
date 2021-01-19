@@ -1,35 +1,18 @@
 #!/usr/bin/env python3
 
+"""Matches the data from our disparate sources and saves a merged catalog.
+
+Can be simply invoked from the command line: `python build_catalog.py`
+"""
+    
+
 import numpy as np
 
-def _F8_from_logg(logg):
-    """Calculates F8 flicker values from log(g)
-    Bastien 2016's Eqn 4.
-    
-    log g = 1.3724221 - 3.5002686 x - 1.6838185 x^2 - 0.37909094 x^3
-    x = log10(F8)
-    """
-    # ax^3 + bx^2 + cx + d = 0
-    a = -0.37909094
-    b = -1.6838185
-    c = -3.5002686
-    d =  1.3724221 - logg
-    
-    # Numpy solves for roots generally, computing "the eigenvalues of
-    # the companion matrix"
-    roots = np.roots([a, b, c, d])
-    # Select real root
-    root = roots[np.imag(roots) == 0]
-    root = np.real(root)
-    
-    if root.size != 1:
-        raise RuntimeError("Cubic root is ambiguous")
-    
-    return 10**root
-
-F8_from_logg = np.vectorize(_F8_from_logg)
+# This will needlessly load the catalog, Aesopus data, etc. but ¯\_(ツ)_/¯
+from base import F8_from_logg
 
 def build_catalog():
+    # We used to use Huber+2014, thus the name
     huber_raw = np.genfromtxt("orig_data/berger_2020.txt", skip_header=45,
             usecols=range(13))
     
@@ -52,7 +35,6 @@ def build_catalog():
         row = mcquillan_raw[i]
         mcquillan[int(row[0])] = row
         
-    
     zhang_raw = np.genfromtxt("orig_data/Zhang_2020.txt", skip_header=25)
     
     zhang = dict()
@@ -62,6 +44,8 @@ def build_catalog():
         
     bastien_raw = np.loadtxt("orig_data/Bastien_2016.txt", skiprows=27, unpack=True)
     
+    (KIC, kepmag, F8logg, E_F8logg, e_F8logg, Range, RMS, Teff) = bastien_raw
+    
     lamost_raw = np.genfromtxt("orig_data/lamost_dr5_vac.out", skip_header=39,
             delimiter=(10, 12, 17, 15, 15, 10, 16, 8, 21, 19, 11, 3, 6, 20, 23, 12, 5)) 
     lamost = dict()
@@ -70,10 +54,17 @@ def build_catalog():
         if not np.isnan(row[1]) and not np.isnan(row[10]) and not np.isnan(row[12]):
             lamost[int(row[1])] = row
     
-    (KIC, kepmag, F8logg, E_F8logg, e_F8logg, Range, RMS, Teff) = bastien_raw
-    
-    catalog=np.zeros(len(KIC), dtype=[
+    # Catalog entries are grouped by source.
+    # Note that, for some duplicated quantites, suffixes indicate the source
+    # The 'has_*' columns store whether a given star has data from a given
+    # source. Columns can be accessed by name. E.g.:
+    #   selection = catalog['TeffH'] > 5770
+    #   catalog['loggH'][selection]
+    #   catalog[selection]['loggH']
+    catalog = np.zeros(len(KIC), dtype=[
                    ('KIC', 'int32'),
+                   
+                   # These come from Bastien+2016
                    ('kepmag', 'float64'),
                    ('F8logg', 'float64'),
                    ('E_F8logg', 'float64'),
@@ -83,6 +74,8 @@ def build_catalog():
                    ('RMS', 'float64'),
                    ('Teff', 'float64'),
                    
+                   # These come from Berger+2020. We used to use Huber+2014,
+                   # thus the 'H' suffix
                    ('TeffH', 'float64'),
                    ('E_TeffH', 'float64'),
                    ('e_TeffH', 'float64'),
@@ -97,6 +90,7 @@ def build_catalog():
                    ('e_FeHH', 'float64'),
                    ('has_H', 'bool_'),
                    
+                   # For those few stars in their sample, the Cranmer+2014 data
                    ('TeffC', 'float64'),
                    ('loggC', 'float64'),
                    ('MC', 'float64'),
@@ -108,16 +102,19 @@ def build_catalog():
                    ('RvarC', 'float64'),
                    ('has_C', 'bool_'),
                    
+                   # The Lamost data. (The citation is Zong+2018)
                    ('FeH', 'float64'),
                    ('e_FeH', 'float64'),
                    ('has_L', 'bool_'),
                    
+                   # McQuillan+2014 rotation data
                    ('PRot', 'float64'),
                    ('e_PRot', 'float64'),
                    ('RPer', 'float64'),
                    ('PFlag', 'str_'),
                    ('has_M', 'bool_'),
                    
+                   # Zhang+2020's magnetic activity data
                    ('S', 'float64'),
                    ('e_S', 'float64'),
                    ('logR+HK', 'float64'),
@@ -125,6 +122,7 @@ def build_catalog():
                    ('Reff', 'float64'),
                    ('e_Reff', 'float64'),
                    ('has_Z', 'bool_')])
+                   
     catalog['KIC'] = KIC
     catalog['kepmag'] = kepmag
     catalog['F8logg'] = F8logg
