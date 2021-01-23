@@ -3,7 +3,6 @@ evolutionary_status
 Papers
 __pycache__
 report
-*.txt
 *.png
 *.npy
 *.swp
