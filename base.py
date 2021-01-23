@@ -226,10 +226,10 @@ def calc_N_gran(R, Teff, logg):
 
 def calc_phi_new(Ma):
     # Phi is just Theta / Theta_sun
-    return calc_theta_new(Ma) / calc_theta_new(Ma_sun)
+    return calc_theta(Ma) / calc_theta(Ma_sun)
 
 @njit
-def calc_theta_new(Ma):
+def calc_theta(Ma):
     # As determined by our fit
     A = 20.98
     B = 3.5e6
@@ -241,13 +241,13 @@ def calc_theta_new(Ma):
 def calc_theta_min(Ma):
     """Calculates the minimum possible Theta according to the envelope"""
     # As determined by our fit
-    return 0.62 * calc_theta_new(Ma)
+    return 0.62 * calc_theta(Ma)
    
 @njit
 def calc_theta_max(Ma):
     """Calculates the maximum possible Theta according to the envelope"""
     # As determined by our fit
-    return 1.27 * calc_theta_new(Ma)
+    return 1.27 * calc_theta(Ma)
 
 @njit
 def calc_theta_ratio_to_envelope(theta_emp, Ma):
@@ -266,9 +266,9 @@ def calc_theta_ratio_to_envelope(theta_emp, Ma):
     return out
 
 def _calc_Ma_from_phi(phi):
-    theta = calc_Ma_from_theta(phi * calc_theta_new(Ma_sun))
+    theta = calc_Ma_from_theta(phi * calc_theta(Ma_sun))
     
-def _calc_Ma_from_theta(theta, theta_fcn=calc_theta_new):
+def _calc_Ma_from_theta(theta, theta_fcn=calc_theta):
     """Numerically inverts the Theta-Ma relation and finds
     a Ma for a given Theta"""
     if np.isnan(theta):
@@ -522,9 +522,9 @@ def calc_sigma(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     if Ma is None:
         Ma = calc_Ma(logg, T, Z)
     if phi is None:
-        theta = calc_theta_new(Ma)
+        theta = calc_theta(Ma)
     else:
-        theta = phi * calc_theta_new(Ma_sun)
+        theta = phi * calc_theta(Ma_sun)
     M = M * M_sun_grams
     prefix = 12 / np.sqrt(2) / np.sqrt(2*np.pi*G)
     sigma = prefix * np.sqrt(tau_g(T, logg, Z, beta)) * Lambda(T, logg, beta) * np.sqrt(10**logg) / np.sqrt(M) * theta ** 2
@@ -583,14 +583,14 @@ def calc_F8_max(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
     """Calculates the maximum possible F8 according to the envelope"""
     if Ma is None:
         Ma = calc_Ma(logg, Teff, Z)
-    phi = calc_theta_max(Ma) / calc_theta_new(Ma_sun)
+    phi = calc_theta_max(Ma) / calc_theta(Ma_sun)
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
 def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
     """Calculates the minimum possible F8 according to the envelope"""
     if Ma is None:
         Ma = calc_Ma(logg, Teff, Z)
-    phi = calc_theta_min(Ma) / calc_theta_new(Ma_sun)
+    phi = calc_theta_min(Ma) / calc_theta(Ma_sun)
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
 def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8):
