@@ -544,6 +544,24 @@ def calc_σ_from_F8(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
     return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
 def calc_F8(logg, T, M, Z, phi=None, Ma=None, bp_cor=True, beta=DEFAULT_BETA):
+    """Produce a model-predicted F8.
+    
+    Requires stellar parameters log_g, Teff, mass and heavy-element mass
+    fraction Z.
+    
+    Passed values of phi (Theta/Theta_sun) and Mach number Ma can be provided
+    to override those that would otherwise be used. (Computing Ma can be a
+    heavy operation, so pre-computing Ma values before multiple F8 calculations
+    can be beneficial.)
+    
+    If bp_cor==True (the default), the Kepler bandpass correction factor is
+    applied, meaning the output of the function is a Kepler-like F8 prediction.
+    When bp_cor==False, the function output is a bolometric F8.
+    
+    The beta argument is not used unless the beta-based Lambda function is
+    enabled (see comment after the definition of Lambda_Tram).
+    """
+    
     sigma = calc_sigma(T, M, logg, Z, phi=phi, Ma=Ma, beta=beta)
     F8 = calc_F8_from_sigma(logg, T, Z, sigma, Ma=Ma, beta=beta)
     if bp_cor:
@@ -750,4 +768,8 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
     return im
 
 raw_catalog = load_catalog()
+# We now use the Berger catalog, which covers all but a handful of flicker stars.
+# We used to use the Huber catalog which covered *all* flicker stars. Since old
+# notebooks didn't need to remove the non-covered stars, they didn't, so we do
+# that here for backwards-compatibility.
 catalog = raw_catalog[raw_catalog['has_H']]
