@@ -12,7 +12,6 @@ import scipy.optimize
 import scipy.stats
 
 import functools
-import warnings
 
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
@@ -88,7 +87,7 @@ def F8_to_logg(F8):
 
 
 
-# ---- Functions implementing the "old" (Cranmer+2014) model
+# ---- Functions implementing the "old" (Cranmer+2014) model ----
 
 
 
@@ -215,14 +214,16 @@ def calc_N_gran(R, Teff, logg):
 
 
 
-# ---- Intermediary Versions ----
-# These functions include only some of our model updates.
-# Some have not been updated since and are still part of The Model,
-# whereas others are kept here for my own backwards compatability with past
-# notebooks, and not recommended for any other use.
+
+# ---- And now the code implementing our new model! ----
+# Note that the use of the beta parameter has since been excised, and so any
+# values given are ignored, but beta still appears throughout these functions,
+# (a) for some backwards compatability with my notebooks, and (b) to facilitate
+# quick comparisons of with and without the use of beta by swapping in the
+# beta-containing Lambda function.
 
 
-# These functions are still "live" and in use:
+
 
 def calc_phi_new(Ma):
     # Phi is just Theta / Theta_sun
@@ -265,9 +266,6 @@ def calc_theta_ratio_to_envelope(theta_emp, Ma):
     out[theta_emp > bound_upper] = ratio_upper[theta_emp > bound_upper]
     return out
 
-def _calc_Ma_from_phi(phi):
-    theta = calc_Ma_from_theta(phi * calc_theta(Ma_sun))
-    
 def _calc_Ma_from_theta(theta, theta_fcn=calc_theta):
     """Numerically inverts the Theta-Ma relation and finds
     a Ma for a given Theta"""
@@ -389,90 +387,6 @@ def calc_bandpass_correction(Teff, logg):
     T_src, logg_src, sig_mult_src = np.genfromtxt("orig_data/bandpass_adjustment.txt", skip_header=4, unpack=True)
     sig_mult = scipy.interpolate.griddata((T_src, logg_src), sig_mult_src, (Teff, logg), 'linear')
     return sig_mult
-
-
-
-# These functions are no longer in use:
-
-
-
-def calc_Φ_from_F8_new(F8, logg, Teff, M, Z):
-    warnings.warn("calc_Φ_from_F8_new is obsolete")
-    σ = calc_σ_from_F8_new(logg, Teff, Z, F8)
-    ν_max = calc_ν_max(logg, Teff)
-    factor = (Teff / T_sun) ** (3/4) * (M_sun * ν_sun / M / ν_max) ** (1/2)
-    return ( (σ / 0.039)**(1/1.10) / factor ) ** 0.5
-calc_phi_from_F8_new = calc_Φ_from_F8_new
-
-def old_calc_phi_new(Ma):
-    warnings.warn("old_calc_phi_new is obsolete")
-    a = 0.15390654
-    b = 0.08877965
-    M0 = 0.32299999
-    
-    phi0 = a*M0**2 + b*M0
-    return (a*Ma**2 + b*Ma) * (Ma < M0) + phi0 * (Ma >= M0)
-
-def calc_F8_new(logg, Teff, M, Z, phi=None, Ma=None):
-    warnings.warn("calc_F8_new is obsolete")
-    σ = calc_σ_new(Teff, M, logg, Z, Φ=phi)
-    return calc_F8_from_σ_new(logg, Teff, Z, σ, Ma)
-
-def calc_σ_new(Teff, M, logg, Z, Φ=None):
-    """Calculates RMS amplitude σ of photospheric continuum intensity variations
-    Cranmer 2014's Eqn 1
-    """
-    warnings.warn("calc_σ_new is obsolete")
-    ν_max = calc_ν_max(logg, Teff)
-    if Φ is None:
-        Ma = calc_Ma_new(logg, Teff, Z)
-        Φ = calc_phi_new(Ma)
-    
-    # Steve had a power of 1.03, drawing from Samadi's appendix. But that
-    # exponent doesn't actually apply to this equation, so return to Samadi's
-    # 1.10
-    return 0.039 * ( (Teff / T_sun) ** (3/4)
-                     * (M_sun * ν_sun / M / ν_max) ** (1/2)
-                     * Φ ** 2)**1.10
-
-def calc_F8_from_σ_new(logg, Teff, Z, σ, Ma=None):
-    """Cranmer 2014's Eqn 8"""
-    warnings.warn("calc_F8_from_σ_new is obsolete")
-    ν_8 = 1 / (8 * 3600)
-    ν_max = calc_ν_max(logg, Teff)
-    if Ma is None:
-        Ma = calc_Ma_new(logg, Teff, Z)
-    
-    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
-    
-    return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
-
-def calc_σ_from_F8_new(logg, Teff, Z, F8):
-    """Cranmer 2014's Eqn 8"""
-    warnings.warn("calc_σ_from_F8_new is obsolete")
-    ν_8 = 1 / (8 * 3600)
-    ν_max = calc_ν_max(logg, Teff)
-    Ma = calc_Ma_new(logg, Teff, Z)
-    
-    τ_eff = 300 * (ν_sun * Ma_sun / ν_max / Ma)**0.98
-    
-    return F8 / np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
-
-def calc_Ma_new(logg, Teff, Z):
-    warnings.warn("calc_Ma_new is obsolete")
-    rho = find_rho(Teff, Z, logg)
-    return Ma_sun * (Teff / T_sun) ** (5/6) * (rho / rho_sun) ** (-1/3)
-
-
-
-# ---- And now, finally, the code implementing our final model! ----
-# Note that the use of the beta parameter has since been excised, and so any
-# values given are ignored, but beta still appears throughout these functions,
-# (a) for some backwards compatability with my notebooks, and (b) to facilitate
-# quick comparisons of with and without the use of beta by swapping in the
-# beta-containing Lambda function.
-
-
 
 mu = lambda Teff: 7/4 + .5 * np.tanh((3500-Teff)/600)
 
