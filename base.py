@@ -41,8 +41,12 @@ DEFAULT_BETA = 8.7
 
 
 
-def load_catalog(fname='merged_catalog.npy'):
-    return np.load(fname)
+def load_catalog(fname='merged_catalog.npy', raw=False):
+    cat = np.load(fname)
+    if not raw:
+        cat = cat[cat['has_H']]
+    return cat
+        
 
 def _F8_from_logg(logg):
     """Calculates F8 flicker values from log(g)
@@ -680,10 +684,3 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
     if return_bins:
         return stat, r, c, binn
     return im
-
-raw_catalog = load_catalog()
-# We now use the Berger catalog, which covers all but a handful of flicker stars.
-# We used to use the Huber catalog which covered *all* flicker stars. Since old
-# notebooks didn't need to remove the non-covered stars, they didn't, so we do
-# that here for backwards-compatibility.
-catalog = raw_catalog[raw_catalog['has_H']]
