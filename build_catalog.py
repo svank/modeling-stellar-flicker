@@ -21,7 +21,7 @@ def build_catalog():
         row = huber_raw[i]
         huber[int(row[0])] = row
     
-    cranmer_raw = np.loadtxt("orig_data/Cranmer_2014.txt", skiprows=30)
+    cranmer_raw = np.genfromtxt("orig_data/Cranmer_2014.txt", skip_footer=31)
     
     cranmer = dict()
     for i in range(cranmer_raw.shape[0]):
@@ -46,7 +46,7 @@ def build_catalog():
     
     (KIC, kepmag, F8logg, E_F8logg, e_F8logg, Range, RMS, Teff) = bastien_raw
     
-    lamost_raw = np.genfromtxt("orig_data/lamost_dr5_vac.out", skip_header=39,
+    lamost_raw = np.genfromtxt("orig_data/LAMOST_Kepler_ApJS2018_spectra_list.out", skip_header=39,
             delimiter=(10, 12, 17, 15, 15, 10, 16, 8, 21, 19, 11, 3, 6, 20, 23, 12, 5)) 
     lamost = dict()
     for i in range(lamost_raw.shape[0]):
