@@ -649,7 +649,7 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
                     extent=(c.min(), c.max(), r.max(), r.min()),
                     vmin=vmin, vmax=vmax,
                     aspect='auto', cmap=cmap,
-                    interpolation='none',
+                    interpolation='nearest',
                     **imshowargs)
     
     if show_x_label:
