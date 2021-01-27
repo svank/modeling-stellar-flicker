@@ -550,19 +550,6 @@ def plot_outline(newer_version=True):
     
     plt.gca().invert_yaxis()
     
-def plot_ZAMS_Teff_logg(**kwargs):
-    """Plots a zero-age main sequence"""
-    M, R, L, T, T_core, rho_core = np.genfromtxt(
-            "orig_data/zams_star_properties.dat.txt",
-            skip_header=10, unpack=True)
-    from astropy.constants import G
-    M *= M_sun_grams
-    R *= R_sun_cm
-    
-    g = G.cgs.value * M / R**2
-    
-    plt.plot(T, np.log10(g), **kwargs)
-
 def outline_data(x=None, y=None, cat=None, smooth=True, **kwargs):
     """Draws an outline of a set of points---by default, our stars in (T, logg)
     
