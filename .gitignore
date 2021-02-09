@@ -1,10 +1,8 @@
 Cranmer 2014 data
 evolutionary_status
-Papers
 __pycache__
-report
 *.png
-*.npy
+*.jpg
 *.swp
 .idea
 .ipynb_checkpoints
