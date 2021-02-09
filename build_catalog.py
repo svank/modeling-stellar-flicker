@@ -21,7 +21,7 @@ def build_catalog():
         row = huber_raw[i]
         huber[int(row[0])] = row
     
-    cranmer_raw = np.genfromtxt("orig_data/Cranmer_2014.txt", skip_footer=31)
+    cranmer_raw = np.genfromtxt("orig_data/Cranmer_2014.txt", skip_header=1, skip_footer=16)
     
     cranmer = dict()
     for i in range(cranmer_raw.shape[0]):
