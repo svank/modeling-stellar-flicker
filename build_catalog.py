@@ -55,12 +55,17 @@ def build_catalog():
             lamost[int(row[1])] = row
     
     # Catalog entries are grouped by source.
-    # Note that, for some duplicated quantites, suffixes indicate the source
+    # Note that, for some quantites appearing in multiple source catalogs,
+    # suffixes in the column name distinguish values from those multiple sources.
     # The 'has_*' columns store whether a given star has data from a given
     # source. Columns can be accessed by name. E.g.:
     #   selection = catalog['TeffH'] > 5770
     #   catalog['loggH'][selection]
     #   catalog[selection]['loggH']
+    # After executing the first line, executing either the second or the third
+    # line (the two are interchangeable) will provide logg values for all stars
+    # with temperatures greater than 5770. Both quantities are drawn from the
+    # 'H' source (see below).
     catalog = np.zeros(len(KIC), dtype=[
                    ('KIC', 'int32'),
                    

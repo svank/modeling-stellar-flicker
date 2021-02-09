@@ -21,9 +21,9 @@ M_sun_grams = 1.998e33
 T_sun = 5770 # K
 logg_sun = 4.438 # log-cgs units
 ν_sun = 3.106e-3 # Hz
-Ma_sun = 0.26 # As given in Cranmer 2014
-              # Used in obsoleted scaling relations, and theta <-> phi
-Z_sun = 0.01696
+Ma_sun = 0.26   # As given in Cranmer 2014
+                # Used in obsoleted scaling relations, and theta <-> phi
+Z_sun = 0.01696 # From Grevesse & Sauval (1998)
 R_sun_cm = 6.957e10
 k_B = consts.k_B.cgs.value
 m_h = consts.m_p.cgs.value
@@ -220,11 +220,14 @@ def calc_N_gran(R, Teff, logg):
 
 
 # ---- And now the code implementing our new model! ----
-# Note that the use of the beta parameter has since been excised, and so any
-# values given are ignored, but beta still appears throughout these functions,
-# (a) for some backwards compatability with my notebooks, and (b) to facilitate
-# quick comparisons of with and without the use of beta by swapping in the
-# beta-containing Lambda function.
+# In general, each function implements one equation or one small step from our
+# model. Note that the use of the beta parameter (the free parameter
+# connecting granular sizes to scale heights) has been excised from the final
+# version of our model. But beta still appears throughout these functions
+# (with any given value ignored) (a) for some backwards compatability with my
+# old notebooks, and (b) to facilitate quick comparisons of model predictions
+# with the old (beta-containing) and new (beta-free) granular size expressions
+# by swapping in the beta-containing Lambda function.
 
 
 
@@ -371,10 +374,6 @@ find_rho = np.vectorize(_find_rho)
 rho_sun = find_rho(T_sun, Z_sun, logg_sun) 
 
 def FeH_to_Z(FeH):
-    # TODO: Maybe still try to find what constant is baked into LAMOST's Fe/H
-    # values. Steve had found that the solar Fe/H hasn't changed much over time,
-    # so there's hope that what they used is what everyone else uses and we
-    # don't need to find theirs specifically.
     return Z_sun * 10**FeH
 
 def Z_to_FeH(Z):
@@ -450,12 +449,14 @@ def calc_sigma(T, M, logg, Z, beta=DEFAULT_BETA, Ma=None, phi=None):
     return sigma * 1000
 
 def calc_F8_from_sigma(logg, Teff, Z, σ, Ma=None, beta=DEFAULT_BETA):
+    """Implements Equation 12 of our paper, except for the bandpass correction"""
     ν_8 = 1 / (8 * 3600)
     τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
     return σ * np.sqrt(1 - 2 / np.pi * np.arctan(4 * τ_eff * ν_8))
 
 def calc_σ_from_F8(logg, Teff, Z, F8, Ma=None, beta=DEFAULT_BETA):
+    """Implements Equation 12 of our paper, except for the bandpass correction"""
     ν_8 = 1 / (8 * 3600)
     τ_eff = tau_eff(Teff, logg, Z, Ma, beta)
     
@@ -487,6 +488,7 @@ def calc_F8(logg, T, M, Z, phi=None, Ma=None, bp_cor=True, beta=DEFAULT_BETA):
     return F8
 
 def calc_theta_from_F8(F8, logg, Teff, M, Z, beta=DEFAULT_BETA):
+    """Backs out a Theta value from a given, observational F8 value"""
     # F8 is expected in units of ppt
     F8 = F8 / 1000
     
@@ -512,10 +514,13 @@ def calc_F8_min(logg, Teff, M, Z, Ma=None, F8_fcn=calc_F8):
     return F8_fcn(logg, Teff, M, Z, phi, Ma)
 
 def calc_F8_ratio_to_envelope(F8_emp, logg, Teff, M, Z, sig_mult=1, Ma_mult=1, Ma=None, F8_fcn=calc_F8):
-    # Takes in observational F8s.  Returns 1 if that F8 is within the range of
-    # the F8 values given by our envelope fit, given a model-predicted Mach
-    # number. Otherwise returns the ratio of the empirical F8 to the nearest
-    # edge of the envelope range.
+    """Computes obs-to-model ratios using our envelope fit.
+    
+    Takes in observational F8s.  Returns 1 if that F8 is within the range of
+    the F8 values given by our envelope fit, given a model-predicted Mach
+    number. Otherwise returns the ratio of the empirical F8 to the nearest
+    edge of the envelope range.
+    """
     if Ma is None:
         Ma = calc_Ma(logg, Teff, Z) * Ma_mult
     bound_lower = calc_F8_min(logg, Teff, M, Z, Ma, F8_fcn=F8_fcn) * sig_mult
@@ -625,8 +630,27 @@ def plot_quasi_hr(cat, quantity, label=None, cmap="viridis", binsize=100,
     """Plots a 2D histogram of a quantity in (T, logg) space, with axes flipped
     for HR-alike display.
     
-    The arguments have largely been added over time to support specific use
-    cases."""
+    The first argument is a catalog (such as the one returned by load_catalog)
+    containing loggH and TeffH columns, used to determine the x and y positions
+    of each star.
+    
+    The second argument is the quantity being plotted in this 2D histogram, and
+    should be a list/array of values, one for each star.
+    
+    The third argument is the label to put on the colorbar.
+    
+    The histogram is produced by default by taking the median of all values
+    falling into each bin. This can be adjusted with the `stat` argument, which
+    accepts any value recognized by scipy.stats.binned_statistic_2d.
+    
+    The histogram grid size is controlled by the `binsize` argument.
+    
+    The colorbar is controlled by the `cmap`, `vmin`, and `vmax` arguments.
+    
+    If log_norm is set to True, the color mapping will be done in logarithmic
+    space.
+    
+    See analysis_and_plots.ipynb for examples of the use of this function."""
     if imshowargs is None:
         imshowargs = {}
     if log_norm:
