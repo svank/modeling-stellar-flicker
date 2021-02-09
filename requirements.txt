@@ -1,0 +1,9 @@
+# These requirements will get you packages at least as recent as the ones
+# I'm using. Change the '>=' to '==' to get exactly the same as what I'm
+# using.
+astropy >=4.2,<5.0
+matplotlib >=3.3.3,<4.0
+numba >=0.52.0,<1.0
+numpy >=1.19,<2.0
+scikit-image >=0.16.2,<1.0
+scipy >=1.6.0,<2.0
