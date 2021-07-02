@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4444282.svg)](https://doi.org/10.5281/zenodo.4444282)
 
-This is the code implementing our model for stellar flicker in Kepler light curves. An arXiv link will be included here nearer to publication.
+This is the code implementing our model for stellar flicker in Kepler light curves, as well as both the data we produce and the data required for running our code, as used in our [paper](https://ui.adsabs.harvard.edu/abs/2021ApJ...913...69V/abstract).
 
 `analysis_and_plots.ipynb` contains most of our analysis and produces all of the plots in our paper.
 

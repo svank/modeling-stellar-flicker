@@ -1,7 +1,8 @@
 This is Steve's code for producing our Kepler-bandpass correction factor (as in
 Section 3.6 and Appendix B of our paper). Specifically, there are two IDL *.pro
-for conducting the analysis, a number of *.out files containing the curated
-output of step1, and step2_output.txt containing the collected output of step2.
+files for conducting the analysis, a number of *.out files containing the
+curated output of step1, and step2_output.txt containing the collected output
+of step2.
 
 Not included in our code repository are the following two input files. They can
 be found from their original sources, and are included in our Zenodo repository
